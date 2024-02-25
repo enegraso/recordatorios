@@ -1,15 +1,15 @@
 const cron = require('node-cron');
 const { enviarMensaje } = require('./mensaje.js');
 
-const CONTACTO = 'TUNUMEROCELULAR@c.us'
+const CONTACTO = '5492342463902@c.us'
 const MSG_SALUDOS = [
-    'Buenos días, ¿cómo amaneció?',
-    'Buenos días, ¿cómo está?',
-    'Buenos días, ¿cómo le va?',
+    'Hola Amor, mensaje automatico a las 15:35, ¿cómo amaneció?',
+    'Hola Amor, mensaje automatico a las 15:35, ¿cómo está?',
+    'Hola Amor, mensaje automatico a las 15:35, ¿cómo le va?',
 ]
 
 function programador_tareas(cliente) {
-    const tiempo = '0 58 18 * * *';
+    const tiempo = '0 35 15 * * *' // '0 58 18 * * *';
     if (cron.validate(tiempo)) {
         console.log('Cron inicializado');
         cron.schedule(tiempo, async () => {
@@ -21,6 +21,8 @@ function programador_tareas(cliente) {
                 console.log('Error en cron', error);
             }
         });
+    } else {
+        console.log("tiempo no validado")
     }
 }
 
