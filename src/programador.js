@@ -45,7 +45,7 @@ const MSG_VENCE = "🤖 Mensaje de *Bot* \n\n" +
     "Muchas gracias. 🤝"
 
 function programador_tareas(cliente) {
-    const tiempo = '0 30 10 * * *' //  ;'0 20 13 * * *' '*/2  * * * *'
+    const tiempo = '0 30 10 * * *' // Everyday at 10:30 AM
     if (cron.validate(tiempo)) {
         console.log('Cron inicializado');
         cron.schedule(tiempo, async () => {
@@ -70,14 +70,14 @@ function programador_tareas(cliente) {
                             if (i.rol === "final") {
                                 console.log(i.pago <= venci, i.pago, venci)
                                 if (i.pago <= venci || !i.pago) {
-                                    const saludo = MSG_VENCE + "\n\n Cuenta" + i.cuenta // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    const saludo = MSG_VENCE + "\n\n Cuenta: *" + i.cuenta + "*" // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
                                     await enviarMensaje(cliente, CONTACTOCEL, saludo);
                                     console.log('Mensaje enviado final');
                                 }
                             } else if (i.rol === "Referido") {
                                 console.log(i.pago <= venci, i.pago, venci)
                                 if (i.pago <= venci || !i.pago) {
-                                    const saludo = MSG_PANEL // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    const saludo = MSG_PANEL  + "\n\n Cuenta: *" + i.cuenta + "*" // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
                                     await enviarMensaje(cliente, CONTACTOCEL, saludo);
                                     console.log('Mensaje enviado REFERIDO');
                                 }
