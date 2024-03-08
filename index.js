@@ -1,5 +1,5 @@
 // reminder's scheduler
-const { programador_tareas } = require('./src/programador.js');
+const { programador_tareas, envio_anuncio_all, envio_anuncio_active, envio_anuncio_inactive } = require('./src/programador.js');
 const { Router } = require('express');
 const express = require('express');
 const morgan = require('morgan');
@@ -71,6 +71,48 @@ app.use(morgan("dev"));
     app.get('/wapp', (req, res) => {
       res.status(200).json({ message: "BackEnd for WAPP - Reminder." })
     })
+
+
+    //mensaje a todos segun canal
+    app.post('/wapp/send/', async (req, res) => {
+      const { message, canal } = req.body
+
+      //generando envios masivo
+      try {
+        await envio_anuncio_all(client, message, canal);
+        return res.sendStatus(200).send("Enviando mensajes")
+      } catch (er) {
+        return res.sendStatus(400).send("No se pudo inciar masivo")
+      }
+   })
+
+    //mensaje a todos los activos segun canal
+
+   app.post('/wapp/sendacti/', async (req, res) => {
+    const { message, canal } = req.body
+
+    //generando envios masivo
+    try {
+      await envio_anuncio_active(client, message, canal);
+      return res.sendStatus(200).send("Enviando mensajes")
+    } catch (er) {
+      return res.sendStatus(400).send("No se pudo inciar masivo")
+    }
+  })
+
+      //mensaje a todos inactivos segun canal
+
+  app.post('/wapp/sendinac/', async (req, res) => {
+    const { message, canal } = req.body
+
+    //generando envios masivo
+    try {
+      await envio_anuncio_inactive(client, message, canal);
+      return res.sendStatus(200).send("Enviando mensajes")
+    } catch (er) {
+      return res.sendStatus(400).send("No se pudo inciar masivo")
+    }
+  })
 
     //init client whats-app web 
     await client.initialize();

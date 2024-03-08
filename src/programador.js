@@ -51,11 +51,13 @@ function programador_tareas(cliente) {
         cron.schedule(tiempo, async () => {
             try {
                 var datetime = new Date();
+                var diadeaviso = datetime.toISOString().slice(8, 10) < 10 ? datetime.toISOString().slice(9, 10) : datetime.toISOString().slice(8, 10)
                 var dia = {
-                    diaavisa: datetime.toISOString().slice(8, 10)
+                    diaavisa: diadeaviso
                 }
                 var venci = datetime.toISOString().slice(2, 4) + datetime.toISOString().slice(5, 7)
                 console.log(venci)
+                console.log(dia.diaavisa)
                 var url = `${process.env.API_HOOK}webhooks/google`
                 // console.log(url + " " + dia);
                 // With Axios
@@ -77,7 +79,7 @@ function programador_tareas(cliente) {
                             } else if (i.rol === "Referido") {
                                 console.log(i.pago <= venci, i.pago, venci)
                                 if (i.pago <= venci || !i.pago) {
-                                    const saludo = MSG_PANEL  + "\n\n Cuenta: *" + i.cuenta + "*" // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    const saludo = MSG_PANEL + "\n\n Cuenta: *" + i.cuenta + "*" // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
                                     await enviarMensaje(cliente, CONTACTOCEL, saludo);
                                     console.log('Mensaje enviado REFERIDO');
                                 }
@@ -95,6 +97,150 @@ function programador_tareas(cliente) {
     }
 }
 
+
+async function envio_anuncio_all(cliente, message, canal) {
+    try {
+        console.log(message)
+        console.log(canal)
+        var url = `${process.env.API_HOOK}webhooks/google/all`
+        var enviados = 0
+        var numerror = 0
+
+        // tomo todos loa contactos de la api de Google
+        await axios.get(url)
+            .then((response) => {
+                response.data.map(async i => {
+                    var CONTACTOCEL = ""
+                    if (i.rol === canal) {
+                        if (i.celu && (i.celu.length >= 11 && i.celu.length <= 13)) {
+                            if (i.celu.slice(0, 2) === "54") {
+                                CONTACTOCEL = i.celu.slice(0, 2) + "9" + i.celu.slice(2, 12) + '@c.us'
+                            }
+                            else {
+                                CONTACTOCEL = i.celu + '@c.us'
+                            }
+                            const saludo = message
+                            // await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                            console.log('Mensaje a ' + i.celu + " - " + saludo);
+                            enviados += 1
+                        } else {
+                            console.log("numero erroneo" + i.celu)
+                            numerror += 1
+                        }
+                    }
+
+                })
+                console.log("Mensajes enviados: " + enviados)
+                console.log("Mensajes no enviados: " + numerror)
+                return true
+            })
+            .catch((error) => {
+                console.log(error)
+                return false
+            });
+
+    } catch (error) {
+        console.log('Error en mensajeria masiva: ', error);
+        return false
+    }
+}
+
+async function envio_anuncio_active(cliente, message, canal) {
+    try {
+        console.log(message)
+        console.log(canal)
+
+        var url = `${process.env.API_HOOK}webhooks/google/active`
+        var enviados = 0
+        var numerror = 0
+
+        await axios.get(url)
+            .then((response) => {
+                response.data.map(async i => {
+                    var CONTACTOCEL = ""
+                    if (i.rol === canal) {
+                        if (i.celu && (i.celu.length >= 11 && i.celu.length <= 13)) {
+                            if (i.celu.slice(0, 2) === "54") {
+                                CONTACTOCEL = i.celu.slice(0, 2) + "9" + i.celu.slice(2, 12) + '@c.us'
+                            }
+                            else {
+                                CONTACTOCEL = i.celu + '@c.us'
+                            }
+                            const saludo = message
+                            await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                            console.log('Mensaje a ' + i.celu + " - " + saludo);
+                            enviados += 1
+                        } else {
+                            console.log("numero erroneo" + i.celu)
+                            numerror += 1
+                        }
+                    }
+
+                })
+                console.log("Mensajes enviados: " + enviados)
+                console.log("Mensajes no enviados: " + numerror)
+                return true
+            })
+            .catch((error) => console.log(error));
+
+        console.log("Mensajes enviados: " + enviados)
+        console.log("Mensajes no enviados: " + numerror)
+
+    } catch (error) {
+        console.log('Error en mensajeria masiva: ', error);
+    }
+}
+
+async function envio_anuncio_inactive(cliente, message, canal) {
+    try {
+        console.log(message)
+        console.log(canal)
+
+        var url = `${process.env.API_HOOK}webhooks/inactive`
+        var enviados = 0
+        var numerror = 0
+
+        await axios.get(url)
+            .then((response) => {
+                response.data.map(async i => {
+                    var CONTACTOCEL = ""
+                    if (i.rol === canal) {
+                        if (i.celu && (i.celu.length >= 11 && i.celu.length <= 13)) {
+                            if (i.celu.slice(0, 2) === "54") {
+                                CONTACTOCEL = i.celu.slice(0, 2) + "9" + i.celu.slice(2, 12) + '@c.us'
+                            }
+                            else {
+                                CONTACTOCEL = i.celu + '@c.us'
+                            }
+                            const saludo = message
+                            await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                            console.log('Mensaje a ' + i.celu + " - " + saludo);
+                            enviados += 1
+                        } else {
+                            console.log("numero erroneo" + i.celu)
+                            numerror += 1
+                        }
+                    }
+
+                })
+                console.log("Mensajes enviados: " + enviados)
+                console.log("Mensajes no enviados: " + numerror)
+                return true
+            })
+            .catch((error) => console.log(error));
+        console.log("Mensajes enviados: " + enviados)
+        console.log("Mensajes no enviados: " + numerror)
+
+    } catch (error) {
+        console.log('Error en mensajeria masiva: ', error);
+    }
+}
+
+
+
 module.exports = {
     programador_tareas,
+    envio_anuncio_all,
+    envio_anuncio_active,
+    envio_anuncio_inactive
 };
