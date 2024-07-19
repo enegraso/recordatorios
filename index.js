@@ -3,7 +3,6 @@ const { programador_tareas, envio_anuncio_all, envio_anuncio_active, envio_anunc
 const { Router } = require('express');
 const express = require('express');
 const morgan = require('morgan');
-const { Client, LocalAuth } = require('whatsapp-web.js');
 require('dotenv').config();
 
 // const qrcode = require('qrcode-terminal');
@@ -24,71 +23,30 @@ app.use(express.json({ limit: "50mb" }));
 app.use(morgan("dev"));
 
 // Reemplaza CONTACTO en programador.js por tu número de celular
-(async () => {
-  try {
-    // clear console
-    console.clear()
-    // Listening for the server
-    const PORT = process.env.PORT || 3003;
-    app.listen(PORT, () => console.log(`🚀 @ http://localhost:${PORT}`));
 
-    const client = new Client({
-      authStrategy: new LocalAuth(),
-      puppeteer: {
-        args: ['--no-sandbox'],
-      }
-    });
+try {
+  // clear console
+  console.clear()
+  // Listening for the server
+  const PORT = process.env.PORT || 3003;
+  app.listen(PORT, () => console.log(`🚀 @ http://localhost:${PORT}`));
 
-    // Add this after express code but before starting the server
+  //mensaje a todos segun canal
+  app.post('/wapp/send/', async (req, res) => {
+    const { message, canal } = req.body
 
-    client.on('qr', (qr) => {
-      // NOTE: This event will not be fired if a session is specified.
-      console.log('QR RECEIVED', qr);
+    //generando envios masivo
+    try {
+      await envio_anuncio_all(client, message, canal);
+      return res.sendStatus(200).send("Enviando mensajes")
+    } catch (er) {
+      return res.sendStatus(400).send("No se pudo inciar masivo")
+    }
+  })
 
-      //probando mio
-      app.get('/wapp/getqr', async (req, res) => {
-        try {
-          const qrCodeImage = await QRcode.toDataURL(qr, {
-            width: 320,
-            height: 320,
-          });
-          console.log(qrCodeImage)
+  //mensaje a todos los activos segun canal
 
-          res.send(`<img src="${qrCodeImage}" alt="QR Code"/>`)
-
-        } catch (err) {
-          console.error('Error generating QR code:', err);
-          res.status(500).send('Internal Server Error');
-        }
-      })
-
-    });
-
-    client.on('ready', () => {
-      console.log('READY');
-    });
-
-    app.get('/wapp', (req, res) => {
-      res.status(200).json({ message: "BackEnd for WAPP - Reminder." })
-    })
-
-
-    //mensaje a todos segun canal
-    app.post('/wapp/send/', async (req, res) => {
-      const { message, canal } = req.body
-
-      //generando envios masivo
-      try {
-        await envio_anuncio_all(client, message, canal);
-        return res.sendStatus(200).send("Enviando mensajes")
-      } catch (er) {
-        return res.sendStatus(400).send("No se pudo inciar masivo")
-      }
-   })
-
-    //mensaje a todos los activos segun canal
-
-   app.post('/wapp/sendacti/', async (req, res) => {
+  app.post('/wapp/sendacti/', async (req, res) => {
     const { message, canal } = req.body
 
     //generando envios masivo
@@ -100,7 +58,7 @@ app.use(morgan("dev"));
     }
   })
 
-      //mensaje a todos inactivos segun canal
+  //mensaje a todos inactivos segun canal
 
   app.post('/wapp/sendinac/', async (req, res) => {
     const { message, canal } = req.body
@@ -114,15 +72,107 @@ app.use(morgan("dev"));
     }
   })
 
-    //init client whats-app web 
-    await client.initialize();
+  app.get("/wapp/qr/:idinsta", async (req, res) => {
+    const { idinsta } = req.params
+    qrimage = "qr-image-"+ idinsta.toString() + ".png"
+    // res.sendFile(qrimage)
+    // res.setHeader('content-type', 'image/png');
+    // res.send("<h1>Qr de instancia</h1><br /><br /><img src='14852-qr-image.png' height='260' width='260' alt='QR image' />")
+    res.sendFile('/root/projects/wapp/' + qrimage);
+    // res.status(200)
+  })
 
-    //init scheduler
-    programador_tareas(client);
+  // mensaje recibido desde waapi
+  app.post('/wapp/receipt/', async (req, res) => {
+    const { event, instanceId, data } = req.body
+    const autor = process.env.AUTOR
+    console.log("Evento: ", event)
+    if (event === "message") {
+      if (data.message.to === "5492342513085@c.us" && data.message.from !== "status@broadcast" && !data.message.from.includes("@g.us")) {
+        console.log("Mensaje para Mi", data.message.id._serialized)
+/*         console.log("mensaje: ", data.message.body)
+        console.log("De: ", data.message.from)
+        console.log("Para: ", data.message.to)
+        console.log("Tipo: ", data.message.type) */
+        if (data.message.type === 'ptt') {
+          console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized)
+          const params = {
+            chatId: data.message.from,
+            message: "🔇 Lamentablemente: No escuchamos mensajes de audio.\n🤝 Muchas gracias por comprender.",
+            replyToMessageId: data.message.id._serialized
+          }
+          const options = {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'content-type': 'application/json',
+              authorization: autor
+            },
+            body: JSON.stringify(params)
+          };
+          await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-message', options)
+            .then(response => response.json())
+            .then(response => {
+              // console.log(response)
+              console.log('Mensaje de audio respondido');
+            })
+            .catch(err => {
+              console.error(err)
+              console.log('Mensaje NO enviado');
+            });
+        }
 
-  } catch (error) {
-    console.log('Error en index', error);
-  }
-})();
+      } else {
+        console.log("mensaje al espacio not to me")
+/*         console.log("mensaje: ", data.message.body)
+        console.log("De: ", data.message.from)
+        console.log("Para:", data.message.to)
+        console.log("Tipo: ", data.message.type) */
+      }
+    }
+
+    if (event === "qr") {
+      // saveImage.js
+      // console.log(req.body)
+      // console.log(req.body.data.base64)
+      const fs = require('fs');
+
+      function saveBase64Image(base64String, outputFilePath) {
+        // Remove the data URL prefix if present
+        const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
+
+        // Convert base64 string to buffer
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // Write buffer to a file
+        fs.writeFile(outputFilePath, imageBuffer, (err) => {
+          if (err) {
+            console.error('Failed to save the image: ', err);
+          } else {
+            console.log('Image saved successfully to ', outputFilePath);
+          }
+        });
+      }
+
+      // Example usage:
+      const base64String = req.body.data.base64 //  'your-base64-encoded-image-string-here';
+      const outputFilePath = 'qr-image-' + instanceId.toString() + '.png';
+
+      saveBase64Image(base64String, outputFilePath);
 
 
+    }
+
+    return res.sendStatus(200);
+  })
+
+  //init scheduler
+  programador_tareas();
+
+  app.get('/wapp', (req, res) => {
+    return res.status(200).json({ message: "BackEnd for WAPP - for customer: " })
+  })
+
+} catch (error) {
+  console.log('Error en index', error);
+}

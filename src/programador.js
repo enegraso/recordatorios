@@ -2,34 +2,53 @@ const cron = require('node-cron');
 const { enviarMensaje } = require('./mensaje.js');
 const axios = require("axios")
 require('dotenv').config();
+const precio = process.env.PRECIO
+const precioml = process.env.PRECIOML
+const linkml = process.env.LINKML
+const preciodni = process.env.PRECIODNI
+const linkdni = process.env.LINKDNI
+const horario = process.env.HORA
+const idinsta = process.env.INSTANCE
+const autor = process.env.AUTOR
 
 
 const MSG_PANEL = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola! Cómo estás? Te aviso que en 48 horas se vence la suscripción de tu panel\n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu panel 🐦‍🔥\n\n" +
     'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso, me avisas y te paso los precios de packs. 💳 Y medios de pago.\n' +
     '\n' +
     '🕘 Horario de atención\n' +
     'Lun a Vie:\n' +
     '9 a 13 y de 16 a 20.\n' +
-    'Sab:\n' +
-    '10,30 a 13,30 y de 17 a 19.\n' +
-    '_Domingos y feriados_ *cerrado*\n\n' +
+    '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
     'Muchas gracias! 🤝'
 
+const MSG_PANEL_CF = "🤖 Mensaje de *Bot* \n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu panel 🚀🧑‍🚀\n\n" +
+    'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso, me avisas y te paso los precios de packs. 💳 Y medios de pago.\n' +
+    '\n' +
+    '🕘 Horario de atención\n' +
+    'Lun a Vie:\n' +
+    '9 a 13 y de 16 a 20.\n' +
+    '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
+    'Muchas gracias! 🤝'
+
+
 const MSG_VENCE = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola! Cómo estás? Te aviso que en, aproximadamente, 36 horas vence tu email abono mensual.\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual.\n" +
     "Quisieramos saber si desea renovar?\n\n" +
     "*Medios de pago*:\n" +
-    "Transferencia *$ 3900* a cualquiera de los siguientes alias CVU:\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CVU:\n" +
     "💸 neura.norma.lemon\n" +
     "💸 fedeveloper\n" +
     "💸  27952878.prex\n" +
     "💸 enegraso.uala\n" +
     "💸 fedeveloperppay\n\n" +
-    "En efectivo *$ 3900* en En efectivo en Rapipago a cuenta PREX número 10408748\n\n" +
-    "Link de pago *$ 4300*:\n" +
-    "https://mpago.la/1fbsuzx (incluye comisiones)\n\n" +
-    "Transferencia *$ 3900* a cualquiera de los siguientes alias CBU:\n" +
+    "En efectivo *$ -PRE-* en En efectivo en Rapipago a cuenta PREX número 10408748\n\n" +
+    "Link de pago *$ -PREML-*:\n" +
+    "-LML- (incluye comisiones)\n\n" +
+    "Link de pago Cuenta DNI *$ -PREDNI-*:\n" +
+    "Ingresá al link y pagá con Cuenta DNI Abono mes s2kcorreo.ar: -LDNI- (incluye comisiones)\n\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CBU:\n" +
     "🏦 fedevelopernx\n" +
     "🏦 fedeveloperdni\n\n" +
     "Si su medio de pago *solicita referencia escrita*, por favor, escribir *webmail* o *correo electrónico*\n\n" +
@@ -38,16 +57,51 @@ const MSG_VENCE = "🤖 Mensaje de *Bot* \n\n" +
     "🕘 Horario de atención \n" +
     "Lun a Vie:\n" +
     "9 a 13 y de 16 a 20.\n" +
-    "Sab: \n" +
-    "10,30 a 13,30 y de 17 a 19.\n" +
-    "_Domingos y feriados_ *cerrado*\n\n" +
+    "_Sábados, Domingos y feriados_ *cerrado*\n\n" +
     "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
     "Muchas gracias. 🤝"
 
-function programador_tareas(cliente) {
-    const tiempo = '0 30 10 * * *' // Everyday at 10:30 AM
+const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual.\n" +
+    "Quisieramos saber si desea renovar?\n\n" +
+    "*Medios de pago*:\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CVU:\n" +
+    "💸 neura.norma.lemon\n" +
+    "💸 fedeveloper\n" +
+    "💸  27952878.prex\n" +
+    "💸 enegraso.uala\n" +
+    "💸 fedeveloperppay\n\n" +
+    "En efectivo *$ -PRE-* en En efectivo en Rapipago a cuenta PREX número 10408748\n\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CBU:\n" +
+    "🏦 fedevelopernx\n" +
+    "🏦 fedeveloperdni\n\n" +
+    "Si su medio de pago *solicita referencia escrita*, por favor, escribir *webmail* o *correo electrónico*\n\n" +
+    "*Siempre confirmar pago, enviando el comprobante*.\n\n" +
+    "📧 Si se vence la cuenta, se perderá el acceso hasta su actualización.\n\n" +
+    "🕘 Horario de atención \n" +
+    "Lun a Vie:\n" +
+    "9 a 13 y de 16 a 20.\n" +
+    "_Sábados, Domingos y feriados_ *cerrado*\n\n" +
+    "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
+    "Muchas gracias. 🤝"
+
+const MSG_VENCE_AE = "🤖 Mensaje de *Bot* \n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu abono\n\n" +
+    'Si deseas renovar y, no perder el acceso, me avisas y te paso precio actual. 💳 Y medios de pago.\n' +
+    '\n' +
+    '🕘 Horario de atención\n' +
+    'Lun a Vie:\n' +
+    '9 a 13 y de 16 a 20.\n' +
+    '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
+    'Muchas gracias! 🤝'
+
+
+function programador_tareas() {
+    const tiempo = horario // '0 56 11 * * *' // Everyday at 10:30 AM
     if (cron.validate(tiempo)) {
         console.log('Cron inicializado');
+
+
         cron.schedule(tiempo, async () => {
             try {
                 var datetime = new Date();
@@ -72,16 +126,150 @@ function programador_tareas(cliente) {
                             if (i.rol === "final") {
                                 console.log(i.pago <= venci, i.pago, venci)
                                 if (i.pago <= venci || !i.pago) {
-                                    const saludo = MSG_VENCE + "\n\n Cuenta: *" + i.cuenta + "*" // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
-                                    await enviarMensaje(cliente, CONTACTOCEL, saludo);
-                                    console.log('Mensaje enviado final');
+                                    let saludo = MSG_VENCE.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    saludo = saludo.replaceAll("-PRE-", precio)
+                                    saludo = saludo.replaceAll("-PREML-", precioml)
+                                    saludo = saludo.replaceAll("-LML-", linkml)
+                                    saludo = saludo.replaceAll("-PREDNI-", preciodni)
+                                    saludo = saludo.replaceAll("-LDNI-", linkdni)
+                                    // console.log(saludo)
+                                    const params = {
+                                        chatId: CONTACTOCEL,
+                                        message: saludo
+                                    }
+                                    const options = {
+                                        method: 'POST',
+                                        headers: {
+                                            accept: 'application/json',
+                                            'content-type': 'application/json',
+                                            authorization: autor
+                                        },
+                                        body: JSON.stringify(params)
+                                    };
+                                    await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                        .then(response => response.json())
+                                        .then(response => {
+                                            console.log(response)
+                                            console.log('Mensaje enviado final');
+                                        })
+                                        .catch(err => {
+                                            console.error(err)
+                                            console.log('Mensaje NO enviado');
+                                        });
+                                    // await enviarMensaje(cliente, CONTACTOCEL, saludo);
+
                                 }
                             } else if (i.rol === "Referido") {
                                 console.log(i.pago <= venci, i.pago, venci)
                                 if (i.pago <= venci || !i.pago) {
-                                    const saludo = MSG_PANEL + "\n\n Cuenta: *" + i.cuenta + "*" // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
-                                    await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                                    let saludo = MSG_PANEL.replaceAll("-NB-", i.cuenta) // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    const params = {
+                                        chatId: CONTACTOCEL,
+                                        message: saludo
+                                    }
+                                    const options = {
+                                        method: 'POST',
+                                        headers: {
+                                            accept: 'application/json',
+                                            'content-type': 'application/json',
+                                            authorization: autor
+                                        },
+                                        body: JSON.stringify(params)
+                                    };
+                                    await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                        .then(response => response.json())
+                                        .then(response => console.log(response))
+                                        .catch(err => console.error(err));
+
+                                    // await enviarMensaje(cliente, CONTACTOCEL, saludo);
                                     console.log('Mensaje enviado REFERIDO');
+                                }
+                            } else if (i.rol === "CFP") {
+                                console.log(i.pago <= venci, i.pago, venci)
+                                if (i.pago <= venci || !i.pago) {
+                                    let saludo = MSG_PANEL_CF.replaceAll("-NB-", i.cuenta) // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    const params = {
+                                        chatId: CONTACTOCEL,
+                                        message: saludo
+                                    }
+                                    const options = {
+                                        method: 'POST',
+                                        headers: {
+                                            accept: 'application/json',
+                                            'content-type': 'application/json',
+                                            authorization: autor
+                                        },
+                                        body: JSON.stringify(params)
+                                    };
+                                    await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                        .then(response => response.json())
+                                        .then(response => console.log(response))
+                                        .catch(err => console.error(err));
+
+                                    // await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                                    console.log('Mensaje enviado REFERIDO');
+                                }
+                            } else if (i.rol === "cflix") {
+                                console.log(i.pago <= venci, i.pago, venci)
+                                if (i.pago <= venci || !i.pago) {
+                                    let saludo = MSG_VENCE_CF.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    saludo = saludo.replaceAll("-PRE-", "$ 4500")
+                                    // console.log(saludo)
+                                    const params = {
+                                        chatId: CONTACTOCEL,
+                                        message: saludo
+                                    }
+                                    const options = {
+                                        method: 'POST',
+                                        headers: {
+                                            accept: 'application/json',
+                                            'content-type': 'application/json',
+                                            authorization: autor
+                                        },
+                                        body: JSON.stringify(params)
+                                    };
+                                    await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                        .then(response => response.json())
+                                        .then(response => {
+                                            console.log(response)
+                                            console.log('Mensaje enviado final');
+                                        })
+                                        .catch(err => {
+                                            console.error(err)
+                                            console.log('Mensaje NO enviado');
+                                        });
+                                    // await enviarMensaje(cliente, CONTACTOCEL, saludo);
+
+                                }
+                            } else if (i.rol === "AES") {
+                                console.log(i.pago <= venci, i.pago, venci)
+                                if (i.pago <= venci || !i.pago) {
+                                    let saludo = MSG_VENCE_AE.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                    // console.log(saludo)
+                                    const params = {
+                                        chatId: CONTACTOCEL,
+                                        message: saludo
+                                    }
+                                    const options = {
+                                        method: 'POST',
+                                        headers: {
+                                            accept: 'application/json',
+                                            'content-type': 'application/json',
+                                            authorization: autor
+                                        },
+                                        body: JSON.stringify(params)
+                                    };
+                                    await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                        .then(response => response.json())
+                                        .then(response => {
+                                            console.log(response)
+                                            console.log('Mensaje enviado final');
+                                        })
+                                        .catch(err => {
+                                            console.error(err)
+                                            console.log('Mensaje NO enviado');
+                                        });
+                                    // await enviarMensaje(cliente, CONTACTOCEL, saludo);
                                 }
                             }
                         })
