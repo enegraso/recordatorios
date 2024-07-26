@@ -62,7 +62,7 @@ const MSG_VENCE = "🤖 Mensaje de *Bot* \n\n" +
     "Muchas gracias. 🤝"
 
 const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual.\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual 🚀🧑‍🚀.\n" +
     "Quisieramos saber si desea renovar?\n\n" +
     "*Medios de pago*:\n" +
     "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CVU:\n" +
@@ -86,7 +86,7 @@ const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
     "Muchas gracias. 🤝"
 
 const MSG_VENCE_AE = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu abono\n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu abono mensual 📽️📺\n\n" +
     'Si deseas renovar y, no perder el acceso, me avisas y te paso precio actual. 💳 Y medios de pago.\n' +
     '\n' +
     '🕘 Horario de atención\n' +
@@ -94,7 +94,6 @@ const MSG_VENCE_AE = "🤖 Mensaje de *Bot* \n\n" +
     '9 a 13 y de 16 a 20.\n' +
     '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
     'Muchas gracias! 🤝'
-
 
 function programador_tareas() {
     const tiempo = horario // '0 56 11 * * *' // Everyday at 10:30 AM

@@ -89,11 +89,22 @@ try {
     console.log("Evento: ", event)
     if (event === "message") {
       if (data.message.to === "5492342513085@c.us" && data.message.from !== "status@broadcast" && !data.message.from.includes("@g.us")) {
+/* 
         console.log("Mensaje para Mi", data.message.id._serialized)
-/*         console.log("mensaje: ", data.message.body)
+        console.log("mensaje: ", data.message.body)
         console.log("De: ", data.message.from)
         console.log("Para: ", data.message.to)
         console.log("Tipo: ", data.message.type) */
+        if (data.message.type === 'chat') {
+          const objRecibe = {
+            text: data.message.body,
+            type: data.message.type,
+            backwa: instanceId,
+            number: data.message.from
+          }
+          console.log(objRecibe)
+          //await axios.post('')
+        }
         if (data.message.type === 'ptt') {
           console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized)
           const params = {
