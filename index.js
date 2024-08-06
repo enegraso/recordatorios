@@ -82,11 +82,11 @@ try {
     // res.status(200)
   })
 
-  // mensaje recibido desde waapi
+  // evento recibido desde waapi
   app.post('/wapp/receipt/', async (req, res) => {
     const { event, instanceId, data } = req.body
     const autor = process.env.AUTOR
-    console.log("Evento: ", event)
+    console.log("Evento: ", event, ", Tipo de evento: ", data.message.type)
     if (event === "message") {
       if (data.message.to === "5492342513085@c.us" && data.message.from !== "status@broadcast" && !data.message.from.includes("@g.us")) {
 /* 

@@ -37,27 +37,30 @@ const MSG_VENCE = "🤖 Mensaje de *Bot* \n\n" +
     "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual.\n" +
     "Quisieramos saber si desea renovar?\n\n" +
     "*Medios de pago*:\n" +
-    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CVU:\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias *CVU*:\n" +
     "💸 neura.norma.lemon\n" +
     "💸 fedeveloper\n" +
-    "💸  27952878.prex\n" +
+    "💸 27952878.prex\n" +
     "💸 enegraso.uala\n" +
-    "💸 fedeveloperppay\n\n" +
+    "💸 fedeveloperbelo\n" +
+    "💸 fedeveloperppay\n" +
+    "💸 fedevelopercpay\n" +
+    "💸 fedevelopypf\n\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias *CBU*:\n" +
+    "🏦 fedevelopernx\n" +
+    "🏦 fedeveloperdni\n\n" +
     "En efectivo *$ -PRE-* en En efectivo en Rapipago a cuenta PREX número 10408748\n\n" +
     "Link de pago *$ -PREML-*:\n" +
     "-LML- (incluye comisiones)\n\n" +
     "Link de pago Cuenta DNI *$ -PREDNI-*:\n" +
     "Ingresá al link y pagá con Cuenta DNI Abono mes s2kcorreo.ar: -LDNI- (incluye comisiones)\n\n" +
-    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CBU:\n" +
-    "🏦 fedevelopernx\n" +
-    "🏦 fedeveloperdni\n\n" +
     "Si su medio de pago *solicita referencia escrita*, por favor, escribir *webmail* o *correo electrónico*\n\n" +
     "*Siempre confirmar pago, enviando el comprobante*.\n\n" +
     "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración.\n\n" +
-    "🕘 Horario de atención \n" +
+    "🕘 *Horario de atención* \n" +
     "Lun a Vie:\n" +
     "9 a 13 y de 16 a 20.\n" +
-    "_Sábados, Domingos y feriados_ *cerrado*\n\n" +
+    "_Sábados, Domingos y feriados_ *CERRADO*\n\n" +
     "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
     "Muchas gracias. 🤝"
 
@@ -65,20 +68,23 @@ const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
     "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual 🚀🧑‍🚀.\n" +
     "Quisieramos saber si desea renovar?\n\n" +
     "*Medios de pago*:\n" +
-    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CVU:\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias *CVU*:\n" +
     "💸 neura.norma.lemon\n" +
     "💸 fedeveloper\n" +
-    "💸  27952878.prex\n" +
+    "💸 27952878.prex\n" +
     "💸 enegraso.uala\n" +
-    "💸 fedeveloperppay\n\n" +
-    "En efectivo *$ -PRE-* en En efectivo en Rapipago a cuenta PREX número 10408748\n\n" +
-    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias CBU:\n" +
+    "💸 fedeveloperbelo\n" +
+    "💸 fedeveloperppay\n" +
+    "💸 fedevelopercpay\n" +
+    "💸 fedevelopypf\n\n" +
+    "Transferencia *$ -PRE-* a cualquiera de los siguientes alias *CBU*:\n" +
     "🏦 fedevelopernx\n" +
     "🏦 fedeveloperdni\n\n" +
+    "En efectivo *$ -PRE-* en En efectivo en Rapipago a cuenta PREX número 10408748\n\n" +
     "Si su medio de pago *solicita referencia escrita*, por favor, escribir *webmail* o *correo electrónico*\n\n" +
     "*Siempre confirmar pago, enviando el comprobante*.\n\n" +
     "📧 Si se vence la cuenta, se perderá el acceso hasta su actualización.\n\n" +
-    "🕘 Horario de atención \n" +
+    "🕘 *Horario de atención* \n" +
     "Lun a Vie:\n" +
     "9 a 13 y de 16 a 20.\n" +
     "_Sábados, Domingos y feriados_ *cerrado*\n\n" +
