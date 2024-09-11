@@ -74,7 +74,7 @@ try {
 
   app.get("/wapp/qr/:idinsta", async (req, res) => {
     const { idinsta } = req.params
-    qrimage = "qr-image-"+ idinsta.toString() + ".png"
+    qrimage = "qr-image-" + idinsta.toString() + ".png"
     // res.sendFile(qrimage)
     // res.setHeader('content-type', 'image/png');
     // res.send("<h1>Qr de instancia</h1><br /><br /><img src='14852-qr-image.png' height='260' width='260' alt='QR image' />")
@@ -86,15 +86,16 @@ try {
   app.post('/wapp/receipt/', async (req, res) => {
     const { event, instanceId, data } = req.body
     const autor = process.env.AUTOR
-    console.log("Evento: ", event, ", Tipo de evento: ", data.message.type)
+    const excludedPhones = ['5492213057933@c.us', '5492342411479@c.us' ];
+    console.log("Evento: ", event, ", Tipo de mensaje: ", data.message.type)
     if (event === "message") {
       if (data.message.to === "5492342513085@c.us" && data.message.from !== "status@broadcast" && !data.message.from.includes("@g.us")) {
-/* 
-        console.log("Mensaje para Mi", data.message.id._serialized)
-        console.log("mensaje: ", data.message.body)
-        console.log("De: ", data.message.from)
-        console.log("Para: ", data.message.to)
-        console.log("Tipo: ", data.message.type) */
+        /* 
+                console.log("Mensaje para Mi", data.message.id._serialized)
+                console.log("mensaje: ", data.message.body)
+                console.log("De: ", data.message.from)
+                console.log("Para: ", data.message.to)
+                console.log("Tipo: ", data.message.type) */
         if (data.message.type === 'chat') {
           const objRecibe = {
             text: data.message.body,
@@ -105,7 +106,7 @@ try {
           console.log(objRecibe)
           //await axios.post('')
         }
-        if (data.message.type === 'ptt') {
+        if ((data.message.type === 'ptt' || data.message.type === 'audio') && (!excludedPhones.includes(data.message.from))) {
           console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized)
           const params = {
             chatId: data.message.from,
@@ -135,12 +136,14 @@ try {
 
       } else {
         console.log("mensaje al espacio not to me")
-/*         console.log("mensaje: ", data.message.body)
-        console.log("De: ", data.message.from)
-        console.log("Para:", data.message.to)
-        console.log("Tipo: ", data.message.type) */
+        /*         console.log("mensaje: ", data.message.body)
+                console.log("De: ", data.message.from)
+                console.log("Para:", data.message.to)
+                console.log("Tipo: ", data.message.type) */
       }
     }
+
+    // crear codigo qr en backend
 
     if (event === "qr") {
       // saveImage.js
@@ -171,7 +174,7 @@ try {
 
       saveBase64Image(base64String, outputFilePath);
 
-
+      // fin creacion qr code in backend
     }
 
     return res.sendStatus(200);
