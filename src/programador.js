@@ -12,47 +12,45 @@ const idinsta = process.env.INSTANCE
 const autor = process.env.AUTOR
 
 
-const MSG_PANEL = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu panel 📺\n\n" +
-    'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso.\n' +
-    '\n' +
+const MSG_VENCE = "🤖 Mensaje de *Bot*: \n\n" +
+    "👋 Hola -NB-! Cómo estás? Aproximadamente en *60 horas* vence tu abono ♾️ *Multivision Play* y 🐦‍🔥*fen1xcin3*📽️.\n\n" +
+    "Desearía renovar?\n\n" +
+    "Precio $ 8000 y medios de pago: 👉 https://bit.ly/s2kmail 👈 (tap en el enlace) \n\n" +
+    "*Envíe comprobante de pago*, luego de hacerlo. \n" +
+    "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración. " +
+    "Renovaciones y Regeneraciones de cuentas *UNICAMENTE EN HORARIO DE ATENCIÓN* \n\n" +
+    '🕘 Horario de atención\n' +
+    "🗓 Lunes y viernes:\n" +
+    "17:30 a 19:00\n" +
+    "*_Sábados, domingos y feriados_ CERRADO*\n\n" +
+    "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
+    "Muchas gracias. 🤝"
+
+const MSG_PANEL = "🤖 Mensaje de *Bot*: \n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️ Multivision Play y panel 🐦‍🔥*fen1xcin3*📽️ \n" +
+    'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso.\n\n' +
     "Importes y 💳 medios de pago en el siguiente link: \n" +
     "👉 https://bit.ly/s2krefer 👈\n\n" +
-    '🕘 Horario de atención Panels 📺\n' +
-    'Lun a Vie:\n' +
-    '*9:00* a *13:00*.\n' +
-    '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
+    '🕘 Horario de atención\n' +
+    "🗓 Lunes y viernes:\n" +
+    "17:30 a 19:00\n" +
+    "*_Sábados, domingos y feriados_ CERRADO*\n\n" +
     'Muchas gracias! 🤝'
 
 const MSG_PANEL_CF = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu panel 🚀🧑‍🚀\n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *3 horas* se vence la suscripción de tu panel 📽️🚀🧑‍🚀\n\n" +
     'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso.\n' +
     '\n' +
     "Importes y 💳 medios de pago en el siguiente link: \n" +
     "👉 https://bit.ly/cfrefer 👈\n\n" +
     '🕘 Horario de atención\n' +
-    'Lun a Vie:\n' +
-    '*9:00* a *13:00* y de *16:00* a *20:00*.\n' +
-    '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
+    "🗓 Lunes y viernes:\n" +
+    "17:30 a 19:00\n" +
+    "_Sábados, domingos y feriados_ CERRADO*\n\n" +
     'Muchas gracias! 🤝'
 
-
-const MSG_VENCE = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual.\n" +
-    "Quisieramos saber si desea renovar?\n" +
-    "*Importe: $ 5.000,00*; medios de pago en el siguiente link:\n" +
-    "👉 https://bit.ly/s2kmail 👈 \n\n" +
-    "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración. " +
-    "Renovaciones y Regeneraciones de cuentas *UNICAMENTE EN HORARIO DE ATENCIÓN* \n\n" +
-    "🕘 *Horario de atención* \n" +
-    "Lun a Vie:\n" +
-    "*9:00* a *13:00* y de *16:00* a *20:00*.\n" +
-    "_Sábados, Domingos y feriados_ *CERRADO*\n\n" +
-    "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
-    "Muchas gracias. 🤝"
-
 const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *60 horas* vence tu email abono mensual 🚀🧑‍🚀.\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en, aproximadamente, *3 dias* vence tu email abono mensual 🚀🧑‍🚀.\n" +
     "Quisieramos saber si desea renovar?\n\n" +
     "*Medios de pago*:\n" +
     "Transferencia *$ -PRE-* a cualquiera de los siguientes alias *CVU*:\n" +
@@ -71,22 +69,29 @@ const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
     "Si su medio de pago *solicita referencia escrita*, por favor, escribir *webmail* o *correo electrónico*\n\n" +
     "*Siempre confirmar pago, enviando el comprobante*.\n\n" +
     "📧 Si se vence la cuenta, se perderá el acceso hasta su actualización.\n\n" +
-    "🕘 *Horario de atención* \n" +
-    "Lun a Vie:\n" +
-    "9 a 13 y de 16 a 20.\n" +
-    "_Sábados, Domingos y feriados_ *cerrado*\n\n" +
+    '🕘 Horario de atención\n' +
+    "🗓 Lunes y viernes:\n" +
+    "17:30 a 19:00\n" +
+    "_Sábados, domingos y feriados_ CERRADO*\n\n" +
     "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
     "Muchas gracias. 🤝"
 
 const MSG_VENCE_AE = "🤖 Mensaje de *Bot* \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en *72 horas* se vence la suscripción de tu abono mensual 📽️📺\n\n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu abono mensual 📽️📺\n\n" +
     'Si deseas renovar y, no perder el acceso, me avisas y te paso precio actual. 💳 Y medios de pago.\n' +
     '\n' +
     '🕘 Horario de atención\n' +
-    'Lun a Vie:\n' +
-    '9 a 13 y de 16 a 20.\n' +
-    '_Sábados, Domingos y feriados_ *cerrado*\n\n' +
+    "🗓 Lunes y viernes:\n" +
+    "17:30 a 19:00\n" +
+    "_Sábados, domingos y feriados_ CERRADO*\n\n" +
     'Muchas gracias! 🤝'
+
+// Define a JavaScript function called lastday with parameters y (year) and m (month)
+var lastday = function (y, m) {
+    // Create a new Date object representing the last day of the specified month
+    // By passing m + 1 as the month parameter and 0 as the day parameter, it represents the last day of the specified month
+    return new Date(y, m + 1, 0).getDate();
+}
 
 function programador_tareas() {
     const tiempo = horario // '0 56 11 * * *' // Everyday at 10:30 AM
@@ -97,12 +102,25 @@ function programador_tareas() {
             try {
                 var datetime = new Date();
                 var diadeaviso = datetime.toISOString().slice(8, 10) < 10 ? datetime.toISOString().slice(9, 10) : datetime.toISOString().slice(8, 10)
+                var venci = datetime.toISOString().slice(2, 4) + datetime.toISOString().slice(5, 7)
+                var seavisa
+                if (datetime.getMonth() === 1) {
+                    var ultimodia = lastday(2025, 1)
+                    if (ultimodia === 28) {
+                        seavisa = parseInt(diadeaviso) + 3
+                    } else if (ultimodia === 29) {
+                        seavisa = parseInt(diadeaviso) + 2
+                    }
+                }
+                diadeaviso = seavisa
+                console.log(diadeaviso, seavisa)
+                console.log(datetime.getMonth())
                 var dia = {
                     diaavisa: diadeaviso
                 }
-                var venci = datetime.toISOString().slice(2, 4) + datetime.toISOString().slice(5, 7)
-                console.log(venci)
-                console.log(dia.diaavisa)
+                console.log("vencimiento", venci)
+                console.log("dia de aviso", dia.diaavisa)
+                console.log("dia vencimiento", dia)
                 var url = `${process.env.API_HOOK}webhooks/google`
                 // console.log(url + " " + dia);
                 // With Axios
