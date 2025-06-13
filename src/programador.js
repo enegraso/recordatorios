@@ -11,30 +11,57 @@ const horario = process.env.HORA
 const idinsta = process.env.INSTANCE
 const autor = process.env.AUTOR
 
+// variables para obtener ruta actual
+const fs = require('fs')/* .promises */;
+const path = require('path');
+const filePath = path.join(__dirname, 'horario.txt');
+
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
+const customParseFormat = require("dayjs/plugin/customParseFormat");
+const isBetween = require("dayjs/plugin/isBetween");
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(customParseFormat);
+dayjs.extend(isBetween);
+
+const TZ = "America/Argentina/Buenos_Aires";
+
+function leerHorario() {
+    const contenido = fs.readFileSync(filePath, "utf-8").split("\n");
+    const fechaEspecial = contenido[0].trim();
+    const mensajeExtra = contenido.slice(2).join("\n").trim()
+    const mensajeHora = contenido.slice(4).join("\n").trim()
+    return { fechaEspecial, mensajeExtra, mensajeHora };
+  }
+
+const { fechaEspecial, mensajeExtra, mensajeHora } = leerHorario();
+    const hoy = dayjs().tz(TZ).format("DD/MM"); // dayjs().format("DD/MM");
+const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n${mensajeHora}` : fechaEspecial.length < 2 ? mensajeHora : "Día " + fechaEspecial + " *CERRADO*\n\n" + mensajeHora
+
+const newmessage = "🔥✔ *NUEVA App* para ver 📺:\n\n--♾ Mul7ivisi0n Pl4y. Indicaciones de instalación:  🌐 👉 bit.ly/iapptivi#apptele 👈\n\nO descargue directamente desde navegador: https://bit.ly/multivision2025, O desde la app downloader, con ese link o código: 9009630\n\n"
 
 const MSG_VENCE = "🤖 Mensaje de *Bot*: \n\n" +
-    "👋 Hola -NB-! Cómo estás? Aproximadamente en *60 horas* vence tu abono ♾️ *Multivision Play* y 🐦‍🔥*fen1xcin3*📽️.\n\n" +
+    "👋 Hola -NB-! Cómo estás? Aproximadamente en *60 horas* vence tu abono ♾️Mul7ivisi0nPl4y.\n\n" +
+        newmessage +
     "Desearía renovar?\n\n" +
-    "Precio $ 8000 y medios de pago: 👉 https://bit.ly/s2kmail 👈 (tap en el enlace) \n\n" +
+    "*Precio $ 8000* y medios de pago: 👉 https://bit.ly/s2kmail 👈 (tap en el enlace) \n\n" +
     "*Envíe comprobante de pago*, luego de hacerlo. \n" +
     "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración. " +
     "Renovaciones y Regeneraciones de cuentas *UNICAMENTE EN HORARIO DE ATENCIÓN* \n\n" +
-    '🕘 Horario de atención\n' +
-    "🗓 Lunes y viernes:\n" +
-    "17:30 a 19:00\n" +
-    "*_Sábados, domingos y feriados_ CERRADO*\n\n" +
+    respuestafinal +
     "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
     "Muchas gracias. 🤝"
 
 const MSG_PANEL = "🤖 Mensaje de *Bot*: \n\n" +
-    "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️ Multivision Play y panel 🐦‍🔥*fen1xcin3*📽️ \n" +
+    "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
+        newmessage +
     'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso.\n\n' +
     "Importes y 💳 medios de pago en el siguiente link: \n" +
     "👉 https://bit.ly/s2krefer 👈\n\n" +
-    '🕘 Horario de atención\n' +
-    "🗓 Lunes y viernes:\n" +
-    "17:30 a 19:00\n" +
-    "*_Sábados, domingos y feriados_ CERRADO*\n\n" +
+    respuestafinal +
     'Muchas gracias! 🤝'
 
 const MSG_PANEL_CF = "🤖 Mensaje de *Bot* \n\n" +
@@ -43,10 +70,7 @@ const MSG_PANEL_CF = "🤖 Mensaje de *Bot* \n\n" +
     '\n' +
     "Importes y 💳 medios de pago en el siguiente link: \n" +
     "👉 https://bit.ly/cfrefer 👈\n\n" +
-    '🕘 Horario de atención\n' +
-    "🗓 Lunes y viernes:\n" +
-    "17:30 a 19:00\n" +
-    "_Sábados, domingos y feriados_ CERRADO*\n\n" +
+    respuestafinal +
     'Muchas gracias! 🤝'
 
 const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
@@ -69,21 +93,15 @@ const MSG_VENCE_CF = "🤖 Mensaje de *Bot* \n\n" +
     "Si su medio de pago *solicita referencia escrita*, por favor, escribir *webmail* o *correo electrónico*\n\n" +
     "*Siempre confirmar pago, enviando el comprobante*.\n\n" +
     "📧 Si se vence la cuenta, se perderá el acceso hasta su actualización.\n\n" +
-    '🕘 Horario de atención\n' +
-    "🗓 Lunes y viernes:\n" +
-    "17:30 a 19:00\n" +
-    "_Sábados, domingos y feriados_ CERRADO*\n\n" +
+    respuestafinal +
     "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
     "Muchas gracias. 🤝"
 
 const MSG_VENCE_AE = "🤖 Mensaje de *Bot* \n\n" +
     "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu abono mensual 📽️📺\n\n" +
     'Si deseas renovar y, no perder el acceso, me avisas y te paso precio actual. 💳 Y medios de pago.\n' +
-    '\n' +
-    '🕘 Horario de atención\n' +
-    "🗓 Lunes y viernes:\n" +
-    "17:30 a 19:00\n" +
-    "_Sábados, domingos y feriados_ CERRADO*\n\n" +
+    '\n'+
+    respuestafinal +
     'Muchas gracias! 🤝'
 
 // Define a JavaScript function called lastday with parameters y (year) and m (month)

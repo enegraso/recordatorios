@@ -9,6 +9,22 @@ require('dotenv').config();
 // const qrcode = require('qrcode-terminal');
 const QRcode = require('qrcode');
 
+// variables para obtener ruta actual
+const fs = require('fs')/* .promises */;
+const path = require('path');
+
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
+const customParseFormat = require("dayjs/plugin/customParseFormat");
+const isBetween = require("dayjs/plugin/isBetween");
+const NodeCache = require("node-cache");
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(customParseFormat);
+dayjs.extend(isBetween);
+
 
 const app = express();
 app.use((req, res, next) => {
@@ -25,35 +41,138 @@ app.use(morgan("dev"));
 
 // Reemplaza CONTACTO en programador.js por tu número de celular
 // Define a JavaScript function called lastday with parameters y (year) and m (month)
-var lastday = function(y, m){
+var lastday = function (y, m) {
   // Create a new Date object representing the last day of the specified month
   // By passing m + 1 as the month parameter and 0 as the day parameter, it represents the last day of the specified month
   return new Date(y, m + 1, 0).getDate();
 }
 
-const february =() => {
-var datetime = new Date();
-var diadeaviso = datetime.toISOString().slice(8, 10) < 10 ? datetime.toISOString().slice(9, 10) : datetime.toISOString().slice(8, 10)
-var venci = datetime.toISOString().slice(2, 4) + datetime.toISOString().slice(5, 7)
-var seavisa
-if (datetime.getMonth() === 1) {
+const february = () => {
+  var datetime = new Date();
+  var diadeaviso = datetime.toISOString().slice(8, 10) < 10 ? datetime.toISOString().slice(9, 10) : datetime.toISOString().slice(8, 10)
+  var venci = datetime.toISOString().slice(2, 4) + datetime.toISOString().slice(5, 7)
+  var seavisa
+  if (datetime.getMonth() === 1) {
     var ultimodia = lastday(2025, 1)
     if (ultimodia === 28) {
-        seavisa = parseInt(diadeaviso) + 3
+      seavisa = parseInt(diadeaviso) + 3
     } else if (ultimodia === 29) {
-        seavisa = parseInt(diadeaviso) + 2
+      seavisa = parseInt(diadeaviso) + 2
     }
+  }
+  diadeaviso = seavisa
+  console.log(diadeaviso, seavisa)
 }
-diadeaviso = seavisa
-console.log(diadeaviso, seavisa)
+
+// Función que verifica si estamos dentro del horario de atención
+function estaDentroDelHorario() {
+  const ahora = new Date();
+  const horaArgentina = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+
+  const dia = horaArgentina.getDay(); // 0 (domingo) a 6 (sábado)
+  const hora = horaArgentina.getHours();
+  const minutos = horaArgentina.getMinutes();
+
+  if (dia === 0 || dia === 6) return false; // Sábado o Domingo
+
+  const minutosTotales = hora * 60 + minutos;
+
+  const inicioManana = 9 * 60 + 30;   // 9:30
+  const finManana = 12 * 60 + 30;     // 12:30
+  const inicioTarde = 16 * 60 + 30;   // 16:30
+  const finTarde = 19 * 60 + 30;      // 19:30
+
+  return (minutosTotales >= inicioManana && minutosTotales <= finManana) ||
+    (minutosTotales >= inicioTarde && minutosTotales <= finTarde);
 }
+
+// Función que verifica si estamos dentro del horario de atención
+
+const cache = new NodeCache(); // Cache por IP o ID, expira en 4h
+
+const TZ = "America/Argentina/Buenos_Aires";
+
+const HORARIOS = {
+  lunes: [
+    { inicio: "09:30", fin: "12:30" },
+    { inicio: "16:30", fin: "19:30" },
+  ],
+  martes: [
+    { inicio: "09:30", fin: "12:30" },
+    { inicio: "16:30", fin: "19:30" },
+  ],
+  miércoles: [
+    { inicio: "09:30", fin: "12:30" },
+    { inicio: "16:30", fin: "19:30" },
+  ],
+  jueves: [
+    { inicio: "09:30", fin: "12:30" },
+    { inicio: "16:30", fin: "19:30" },
+  ],
+  viernes: [
+    { inicio: "09:30", fin: "12:30" },
+    { inicio: "16:30", fin: "19:30" },
+  ],
+};
+
+/* function estaDentroDelHorario() {
+  const ahora = dayjs().tz(TZ);
+  const diaSemana = ahora.format("dddd").toLowerCase();
+
+  const bloques = HORARIOS[diaSemana];
+  if (!bloques) return false;
+
+  console.log("A ver", bloques)
+
+  return bloques.some(({ inicio, fin }) => {
+    const inicioHora = dayjs(ahora.format("YYYY-MM-DD") + " " + inicio, "YYYY-MM-DD HH:mm");
+    const finHora = dayjs(ahora.format("YYYY-MM-DD") + " " + fin, "YYYY-MM-DD HH:mm");
+    return ahora.isBetween(inicioHora, finHora);
+  });
+} */
+
+function estaDentroDelHorario() {
+  const ahora = dayjs().tz(TZ);
+  const diaSemana = ahora.day(); // 0 (domingo) a 6 (sábado)
+
+  // Mapear días a bloques de horario
+  let bloques = [];
+  if ([1, 3, 5].includes(diaSemana)) { // lunes, miércoles, viernes
+    bloques = [
+      { inicio: "09:30", fin: "12:30" },
+      { inicio: "16:30", fin: "19:30" },
+    ];
+  } else if ([2, 4].includes(diaSemana)) { // martes, jueves
+    bloques = [
+      { inicio: "10:30", fin: "12:30" },
+      { inicio: "16:30", fin: "19:30" },
+    ];
+  } else {
+    return false; // Sábado y domingo cerrado
+  }
+
+  // Verificar si el horario actual está dentro de alguno de los bloques
+  return bloques.some(({ inicio, fin }) => {
+    const inicioHora = dayjs(`${ahora.format("YYYY-MM-DD")} ${inicio}`, "YYYY-MM-DD HH:mm").tz(TZ);
+    const finHora = dayjs(`${ahora.format("YYYY-MM-DD")} ${fin}`, "YYYY-MM-DD HH:mm").tz(TZ);
+    return ahora.isAfter(inicioHora) && ahora.isBefore(finHora);
+  });
+}
+
+function leerConfiguracion() {
+  const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
+  const fechaEspecial = contenido[0].trim();
+  const mensajeExtra = contenido.slice(2).join("\n").trim()
+  return { fechaEspecial, mensajeExtra };
+}
+
 
 try {
 
   // clear console
   console.clear()
 
-//   february() 
+  //   february() 
   // Listening for the server
   const PORT = process.env.PORT || 3003;
   app.listen(PORT, () => console.log(`🚀 @ http://localhost:${PORT}`));
@@ -109,14 +228,128 @@ try {
     // res.status(200)
   })
 
+  let mensajeAusencia = '🤖 Mensaje de bot: *Ausente* \n\n'
+  let textoarchivo = ''
+
+
+  // realizar envio de mensaje masivo a través de la API
+
+  // Función simulada para enviar SMS (reemplazar con API real)
+  const sendSMS = async (number, message) => {
+
+    const params = {
+      chatId: number + '@c.us', // Asegúrate de que el número esté en el formato correcto
+      message
+    }
+    const options = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: autor
+      },
+      body: JSON.stringify(params)
+    };
+    await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+      .then(response => response.json())
+      .then(response => {
+        console.log(response)
+        console.log('Mensaje enviado final');
+      })
+      .catch(err => {
+        console.error(err)
+        console.log('Mensaje NO enviado');
+      });
+
+    console.log(`📤 Enviando mensaje a ${number}: "${message}"`);
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulación
+  };
+
+  // Función para reemplazar {{nombre}} en el mensaje
+  const personalizeMessage = (template, name) => {
+    return template.replace(/{{\s*nombre\s*}}/gi, name);
+  };
+
+  app.post('/send-messages', async (req, res) => {
+    const { recipients, message } = req.body;
+    /*
+    Ejemplo de cuerpo de solicitud:
+    {
+      "recipients": [
+        { "number": "+5491123456789", "name": "Juan" },
+        { "number": "+5491123456790", "name": "Ana" }
+      ],
+      "message": "Hola {{nombre}}, este es un mensaje personalizado."
+    } 
+    */
+
+    if (!Array.isArray(recipients) || recipients.length === 0 || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Se requiere un array de destinatarios y un mensaje válido.' });
+    }
+
+    // Responder de inmediato para no bloquear al cliente
+    res.json({ status: 'Envío iniciado', total: recipients.length });
+
+    (async () => {
+      for (let i = 0; i < recipients.length; i++) {
+        const { number, name } = recipients[i];
+        const personalizedMessage = personalizeMessage(message, name || 'Usuario');
+
+        try {
+          await sendSMS(number, personalizedMessage);
+        } catch (err) {
+          console.error(`❌ Error al enviar a ${number}:`, err);
+        }
+
+        // Esperar 1 segundo entre envíos
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Pausa de 60 segundos cada 10 envíos
+        if ((i + 1) % 10 === 0 && i !== recipients.length - 1) {
+          console.log('⏸️ Pausa de 60 segundos después de 10 envíos...');
+          await new Promise(resolve => setTimeout(resolve, 60000));
+        }
+      }
+
+      console.log('✅ Todos los mensajes han sido enviados.');
+    })();
+  });
+
+
   // evento recibido desde waapi
   app.post('/wapp/receipt/', async (req, res) => {
     const { event, instanceId, data } = req.body
     const autor = process.env.AUTOR
-    const excludedPhones = ['5492213057933@c.us', '5492342411479@c.us', '5492346557533@c.us', '5492342463902@c.us', '5492342403383@c.us', '5492342456413@c.us', '5492342485902@c.us', '5492342406265@c.us'];
+    const idUsuario = data.message.from
+
+    const hoy = dayjs().tz(TZ).format("DD/MM"); // dayjs().format("DD/MM");
+    const { fechaEspecial, mensajeExtra } = leerConfiguracion();
+
+    // Leer el archivo y generar un array con los números de WhatsApp
+    function obtenerNumerosDesdeArchivo(rutaArchivo) {
+      try {
+        const data = fs.readFileSync(rutaArchivo, 'utf8');
+        const numeros = data
+          .split('\n')                 // Separar por líneas
+          .map(n => n.trim())          // Eliminar espacios extra
+          .filter(n => n.length > 0);  // Filtrar líneas vacías
+        return numeros;
+      } catch (err) {
+        console.error('Error al leer el archivo:', err);
+        return [];
+      }
+    }
+
+    // Ejemplo de uso para obtener los numeros a quienes le permito envio de audios 
+    const excludedPhones = obtenerNumerosDesdeArchivo('numeros.txt');
+
+    // const excludedPhones = ['5492213057933@c.us', '5492342411479@c.us', '5492346557533@c.us', '5492342463902@c.us', '5492342403383@c.us', '5492342456413@c.us', '5492342485902@c.us', '5492342406265@c.us', '5492342567415@c.us', '5492213057933@c.us', '5492342410437@c.us'];
     // console.log("Evento: "+ event + ", Tipo de mensaje: " + data.message.type)
     if (event === "message") {
       if (data.message.to === "5492342513085@c.us" && data.message.from !== "status@broadcast" && !data.message.from.includes("@g.us")) {
+        /* if (estaDentroDelHorario()) { */
+        // res.send('¡Estamos disponibles para atenderte!');
+
         /* 
                 console.log("Mensaje para Mi", data.message.id._serialized)
                 console.log("mensaje: ", data.message.body)
@@ -132,51 +365,6 @@ try {
           serial: data.message.id._serialized
         }
         console.log(objRecibe)
-        //await axios.post('')
-        /* } */
-/*         if (data.message.type === 'chat') {
-          const paramsar = {
-            "model": "embed-multilingual-light-v3.0",
-            "inputs": [objRecibe.text],
-            "examples": [{ "text": "Hola como estas", "label": "Saludo" },
-            { "text": "buen dia buenas tardes noches", "label": "Saludo" },
-            { "text": "no puedo ver ningun canal", "label": "fallaapp" },
-            { "text": "la app falla canales", "label": "fallaapp" },
-            { "text": "cuanto cuesta la app", "label": "Precio" },
-            { "text": "Precio de la app", "label": "Precio" },
-            { "text": "Te paso el comprobante de pago", "label": "Pago" },
-            { "text": "envio mando comprobante de pago", "label": "Pago" },
-            { "text": "muchas gracias", "label": "agradezco" },
-            { "text": "agradezco", "label": "agradezco" },
-            { "text": "acceso a mi panel", "label": "panel" },
-            { "text": "panel vendedor", "label": "panel" },
-            { "text": "no anda el streaming de video", "label": "servertv" },
-            { "text": "se corta el streaming del canal", "label": "servertv" },
-            { "text": "no anda el streaming de la radio?", "label": "serverfm" },
-            { "text": "se corta el streaming la radio", "label": "serverfm" }]
-          }
-          const optionsar = {
-            method: 'POST',
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json',
-              authorization: 'BEARER XGOFt1rBPNTFCCG08zUlMSjqnToSdN1X4n1G74bk'
-            },
-            body: JSON.stringify(paramsar)
-          }
-          console.log(optionsar)
-          await fetch('https://api.cohere.com/v1/classify', optionsar)
-            .then(response => response.json())
-            .then(response => {
-              console.log(response)
-              console.log('A ver como me fue', response.classifications[0].prediction);
-            })
-            .catch(err => {
-              console.error(err)
-              console.log('Error en cohere');
-            });
-
-        } */
         if ((data.message.type === 'ptt' || data.message.type === 'audio')) { // si entra mensaje de audio
           if (excludedPhones.includes(data.message.from)) { // si es de un contacto en exclusion
             console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario permitido", data.message.from)
@@ -208,6 +396,50 @@ try {
               });
           }
         }
+        // además de los mensajes de audio, si es un mensaje de texto, respondemos en caso de fuera de horario
+        console.log("hoy", hoy, "ahora", dayjs().tz(TZ).format("DD/MM HH:mm:ss"), "esta en horario", estaDentroDelHorario())
+
+        if (hoy === fechaEspecial || !estaDentroDelHorario()) {
+          // cache de 4 horas
+          if (cache.has(idUsuario)) {
+            console.log("Mensaje recibido (ya se respondió recientemente")
+            return res.status(200).json({ mensaje: "Mensaje recibido (ya se respondió recientemente)" });
+          }
+          const newmessage = "🔥✔ *NUEVA App* para ver 📺:\n\n--♾ Mul7ivisi0n Pl4y. Indicaciones de instalación:  🌐 👉 bit.ly/iapptivi#apptele 👈\n\nO descargue directamente desde navegador: https://bit.ly/multivision2025, O desde la app downloader, con ese link o código: 9009630\n\n"
+          const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n` : fechaEspecial.length < 4 ? "" : "Día " + fechaEspecial + " *CERRADO*\n\n"
+          const respuesta = mensajeAusencia + respuestafinal + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \nMartes y jueves: \n🕥10,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
+          cache.set(idUsuario, true, 10800); // 3 horas = 10800 segundos
+          // return res.status(200).json({ mensaje: respuesta });
+
+          const params = {
+            chatId: data.message.from,
+            message: respuesta, //mensajeAusencia,
+            // replyToMessageId: data.message.id._serialized // objRecibe.serial
+          }
+          const options = {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'content-type': 'application/json',
+              authorization: autor
+            },
+            body: JSON.stringify(params)
+          };
+          console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario NO permitido", data.message.from, "aunsencia", mensajeAusencia)
+
+          await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-message', options)
+            .then(response => response.json())
+            .then(response => {
+              console.log(response)
+              console.log('Mensaje fuera de horario respondido');
+            })
+            .catch(err => {
+              console.error(err)
+              console.log('Mensaje NO enviado');
+            });
+        } /* else { */
+
+        /*  } */
 
       } else {
         console.log("mensaje al espacio not to me")
@@ -253,6 +485,10 @@ try {
     }
 
     return res.sendStatus(200);
+
+
+
+
   })
 
   //init scheduler
