@@ -5,7 +5,8 @@ const express = require('express');
 const morgan = require('morgan');
 // const nodemailer = require('nodemailer')
 require('dotenv').config();
-
+const autor = process.env.AUTOR
+const idinsta = process.env.INSTANCE
 // const qrcode = require('qrcode-terminal');
 const QRcode = require('qrcode');
 
@@ -218,21 +219,8 @@ try {
     }
   })
 
-  app.get("/wapp/qr/:idinsta", async (req, res) => {
-    const { idinsta } = req.params
-    qrimage = "qr-image-" + idinsta.toString() + ".png"
-    // res.sendFile(qrimage)
-    // res.setHeader('content-type', 'image/png');
-    // res.send("<h1>Qr de instancia</h1><br /><br /><img src='14852-qr-image.png' height='260' width='260' alt='QR image' />")
-    res.sendFile('/root/projects/wapp/' + qrimage);
-    // res.status(200)
-  })
 
-  let mensajeAusencia = '🤖 Mensaje de bot: *Ausente* \n\n'
-  let textoarchivo = ''
-
-
-  // realizar envio de mensaje masivo a través de la API
+    // realizar envio de mensaje masivo a través de la API
 
   // Función simulada para enviar SMS (reemplazar con API real)
   const sendSMS = async (number, message) => {
@@ -270,7 +258,7 @@ try {
     return template.replace(/{{\s*nombre\s*}}/gi, name);
   };
 
-  app.post('/send-messages', async (req, res) => {
+  app.post('/wapp/send-messages', async (req, res) => {
     const { recipients, message } = req.body;
     /*
     Ejemplo de cuerpo de solicitud:
@@ -315,6 +303,19 @@ try {
     })();
   });
 
+
+  app.get("/wapp/qr/:idinsta", async (req, res) => {
+    const { idinsta } = req.params
+    qrimage = "qr-image-" + idinsta.toString() + ".png"
+    // res.sendFile(qrimage)
+    // res.setHeader('content-type', 'image/png');
+    // res.send("<h1>Qr de instancia</h1><br /><br /><img src='14852-qr-image.png' height='260' width='260' alt='QR image' />")
+    res.sendFile('/root/projects/wapp/' + qrimage);
+    // res.status(200)
+  })
+
+  let mensajeAusencia = '🤖 Mensaje de bot: *Ausente* \n\n'
+  let textoarchivo = ''
 
   // evento recibido desde waapi
   app.post('/wapp/receipt/', async (req, res) => {
