@@ -9,6 +9,12 @@ const autor = process.env.AUTOR
 const idinsta = process.env.INSTANCE
 // const qrcode = require('qrcode-terminal');
 const QRcode = require('qrcode');
+const axios = require('axios');
+
+const sheets = require('./googleClient');
+
+const spreadsheetId = process.env.SPREADSHEET_ID;
+const sheetName = process.env.SHEET_NAME;
 
 // variables para obtener ruta actual
 const fs = require('fs')/* .promises */;
@@ -20,6 +26,7 @@ const timezone = require("dayjs/plugin/timezone");
 const customParseFormat = require("dayjs/plugin/customParseFormat");
 const isBetween = require("dayjs/plugin/isBetween");
 const NodeCache = require("node-cache");
+const e = require('express');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -220,7 +227,7 @@ try {
   })
 
 
-    // realizar envio de mensaje masivo a través de la API
+  // realizar envio de mensaje masivo a través de la API
 
   // Función simulada para enviar SMS (reemplazar con API real)
   const sendSMS = async (number, message) => {
@@ -301,6 +308,110 @@ try {
 
       console.log('✅ Todos los mensajes han sido enviados.');
     })();
+  });
+
+  app.post('/wapp/pedir-cuenta', async (req, res) => {
+    const numero = (req.body.numero || '').trim();
+    const instanceId = req.body.insId || idinsta;
+
+    if (!numero) {
+      return res.status(400).json({ message: 'Número no proporcionado', error: 'Número no proporcionado' });
+    }
+
+
+    const captchaToken = req.body.captchaToken;
+    if (!captchaToken) {
+      return res.status(400).json({ error: 'Captcha no enviado' });
+    }
+
+/*     // Verificar con Google
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+    const secret = process.env.RECAPTCHA_SECRET_KEY;
+
+    const verifyRes = await axios.post(
+      verifyUrl,
+      null,
+      {
+        params: {
+          secret,
+          response: captchaToken,
+        },
+      }
+    );
+
+    if (!verifyRes.data.success) {
+      return res.status(403).json({ error: 'Captcha inválido' });
+    } */
+
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!D4:H`, // D = cuenta, E = clave, H = contacto
+      });
+
+      const rows = response.data.values;
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ message: 'No se encontraron datos', error: 'No se encontraron datos' });
+      }
+
+      const cuentaIndex = 0; // columna D
+      const claveIndex = 1;  // columna E
+      const contactoIndex = 4; // columna H (índice relativo en rango D:H)
+
+      const normalizar = str => str.replace(/\D/g, '').replace(/^54/, '');
+      const numeroNormalizado = normalizar(numero);
+
+      const coincidencias = rows.filter(row => {
+        const contacto = normalizar(row[contactoIndex] || '');
+        return contacto === numeroNormalizado;
+      });
+
+      if (coincidencias.length === 0) {
+        return res.status(404).json({ message: 'Número no encontrado', error: 'Número no encontrado' });
+      }
+
+      const resultados = coincidencias.map(row => ({
+        cuenta: row[cuentaIndex],
+        clave: row[claveIndex],
+      }));
+      const recipient = numero.startsWith("5") ? numero + "@c.us" : "549" + numero + "@c.us"
+      const aenviar = recipient.replaceAll(" ", "").replaceAll("-", "").replaceAll("(", "").replaceAll(")", "")
+      const params = {
+        chatId: aenviar, // data.message.from,
+        message: "Aqui va su usuario y clave: \n\n" + JSON.stringify(resultados) + "\n\nMuchas gracias", //mensajeAusencia,
+        // replyToMessageId: data.message.id._serialized // objRecibe.serial
+      }
+      console.log(params.chatId)
+
+      const options = {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          authorization: autor
+        },
+        body: JSON.stringify(params)
+      };
+      console.log(params.message)
+
+      await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-message', options)
+        .then(response => response.json())
+        .then(response => {
+          console.log(response)
+          console.log('Cuenta enviada respondido');
+        })
+        .catch(err => {
+          console.error(err)
+          console.log('Mensaje NO enviado');
+        });
+
+
+      return res.json({ message: "se enviara la cuenta al celu correspondiente", resultados });
+
+    } catch (error) {
+      console.error('Error al acceder a la planilla:', error);
+      return res.status(500).json({ error: 'Error al acceder a la planilla' });
+    }
   });
 
 
@@ -406,9 +517,9 @@ try {
             console.log("Mensaje recibido (ya se respondió recientemente")
             return res.status(200).json({ mensaje: "Mensaje recibido (ya se respondió recientemente)" });
           }
-          const newmessage = "🔥✔ *NUEVA App* para ver 📺:\n\n--♾ Mul7ivisi0n Pl4y. Indicaciones de instalación:  🌐 👉 bit.ly/iapptivi#apptele 👈\n\nO descargue directamente desde navegador: https://bit.ly/multivision2025, O desde la app downloader, con ese link o código: 9009630\n\n"
+          const newmessage = "🔥 *Enterate de novedades, incidencias o perdiste tu clave*: 👉 https://bit.ly/avisarte 👈 (tap/presiona en enlace) \n\n"
           const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n` : fechaEspecial.length < 4 ? "" : "Día " + fechaEspecial + " *CERRADO*\n\n"
-          const respuesta = mensajeAusencia + respuestafinal + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \nMartes y jueves: \n🕥10,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
+          const respuesta = mensajeAusencia + respuestafinal + newmessage + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \nMartes y jueves: \n🕥10,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
           cache.set(idUsuario, true, 10800); // 3 horas = 10800 segundos
           // return res.status(200).json({ mensaje: respuesta });
 
@@ -437,6 +548,28 @@ try {
             .catch(err => {
               console.error(err)
               console.log('Mensaje NO enviado');
+            });
+
+          //marcar chat como no leido, luego de enviar mensaje de ausencia
+
+          const optionsur = {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'content-type': 'application/json',
+              authorization: autor
+            },
+            body: JSON.stringify({ chatId: data.message.from })
+          };
+
+          await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/mark-chat-unread', optionsur)
+            .then(res => res.json())
+            .then(res => {
+              console.log('Chat marcado como no leído:', res);
+            })
+            .catch(err => {
+              console.error(err)
+              console.log('No se pudo marcar como no leído', err);
             });
         } /* else { */
 
