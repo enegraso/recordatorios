@@ -100,7 +100,7 @@ const cache = new NodeCache(); // Cache por IP o ID, expira en 4h
 
 const TZ = "America/Argentina/Buenos_Aires";
 
-const HORARIOS = {
+/* const HORARIOS = {
   lunes: [
     { inicio: "09:30", fin: "12:30" },
     { inicio: "16:30", fin: "19:30" },
@@ -121,7 +121,7 @@ const HORARIOS = {
     { inicio: "09:30", fin: "12:30" },
     { inicio: "16:30", fin: "19:30" },
   ],
-};
+}; */
 
 /* function estaDentroDelHorario() {
   const ahora = dayjs().tz(TZ);
@@ -324,24 +324,24 @@ try {
       return res.status(400).json({ error: 'Captcha no enviado' });
     }
 
-/*     // Verificar con Google
-    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
-    const secret = process.env.RECAPTCHA_SECRET_KEY;
-
-    const verifyRes = await axios.post(
-      verifyUrl,
-      null,
-      {
-        params: {
-          secret,
-          response: captchaToken,
-        },
-      }
-    );
-
-    if (!verifyRes.data.success) {
-      return res.status(403).json({ error: 'Captcha inválido' });
-    } */
+    /*     // Verificar con Google
+        const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+        const secret = process.env.RECAPTCHA_SECRET_KEY;
+    
+        const verifyRes = await axios.post(
+          verifyUrl,
+          null,
+          {
+            params: {
+              secret,
+              response: captchaToken,
+            },
+          }
+        );
+    
+        if (!verifyRes.data.success) {
+          return res.status(403).json({ error: 'Captcha inválido' });
+        } */
 
     try {
       const response = await sheets.spreadsheets.values.get({
@@ -425,7 +425,7 @@ try {
     // res.status(200)
   })
 
-  let mensajeAusencia = '🤖 Mensaje de bot: *Ausente* \n\n'
+  let mensajeAusencia = 'Hola! soy 🤖 BOT-In: Ahora no hay agentes...\n\n'
   let textoarchivo = ''
 
   // evento recibido desde waapi
@@ -517,7 +517,13 @@ try {
             console.log("Mensaje recibido (ya se respondió recientemente")
             return res.status(200).json({ mensaje: "Mensaje recibido (ya se respondió recientemente)" });
           }
-          const newmessage = "🔥 *Enterate de novedades, incidencias o perdiste tu clave*: 👉 https://bit.ly/avisarte 👈 (tap/presiona en enlace) \n\n"
+          const newmessage00 = "🤖 Te paso algunas opciones, *para que veas, mientras vuelven los agentes*\n\n"
+          const newmessage01 = "🔥 *Anuncios, info e incidencias*: 👉 https://bit.ly/avisarte 👈 (tap/presiona en enlace)\n"
+          const newmessage02 = "🔓 *Recupera usuario y clave*: 👉 https://bit.ly/usermplay 👈 (tap/presiona en enlace)\n"
+          const newmessage03 = "♾️ *Instalar la app*: 👉 https://bit.ly/iapptivi 👈 (tap/presiona en enlace)\n"
+          const newmessage04 = "🤑 *Si sabe monto y desea pagar*: 👉 https://bit.ly/mps2k 👈 (tap/presiona en enlace)\n\n"
+
+          const newmessage = newmessage00 + newmessage01 + newmessage02 + newmessage03 + newmessage04
           const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n` : fechaEspecial.length < 4 ? "" : "Día " + fechaEspecial + " *CERRADO*\n\n"
           const respuesta = mensajeAusencia + respuestafinal + newmessage + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \nMartes y jueves: \n🕥10,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
           cache.set(idUsuario, true, 10800); // 3 horas = 10800 segundos
