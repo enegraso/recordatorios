@@ -15,6 +15,7 @@ const sheets = require('./googleClient');
 
 const spreadsheetId = process.env.SPREADSHEET_ID;
 const sheetName = process.env.SHEET_NAME;
+const environment = process.env.NODE_ENV || 'development';
 
 // variables para obtener ruta actual
 const fs = require('fs')/* .promises */;
@@ -27,6 +28,7 @@ const customParseFormat = require("dayjs/plugin/customParseFormat");
 const isBetween = require("dayjs/plugin/isBetween");
 const NodeCache = require("node-cache");
 const e = require('express');
+const { env } = require('process');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -45,7 +47,16 @@ app.use((req, res, next) => {
 // app.use(cors()); // uso de cors definido anteriormente
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
-app.use(morgan("dev"));
+morgan.token("id", (req) => req.id);
+app.use(morgan(function (tokens, req, res) {
+  return JSON.stringify({
+    requestId: tokens.id(req, res),
+    method: tokens.method(req, res),
+    url: tokens.url(req, res),
+    status: parseInt(tokens.status(req, res), 10),
+    responseTime: `${tokens["response-time"](req, res)} ms`,
+  });
+}));
 
 // Reemplaza CONTACTO en programador.js por tu número de celular
 // Define a JavaScript function called lastday with parameters y (year) and m (month)
@@ -73,7 +84,7 @@ const february = () => {
 }
 
 // Función que verifica si estamos dentro del horario de atención
-function estaDentroDelHorario() {
+/* function estaDentroDelHorario() {
   const ahora = new Date();
   const horaArgentina = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
 
@@ -92,7 +103,7 @@ function estaDentroDelHorario() {
 
   return (minutosTotales >= inicioManana && minutosTotales <= finManana) ||
     (minutosTotales >= inicioTarde && minutosTotales <= finTarde);
-}
+} */
 
 // Función que verifica si estamos dentro del horario de atención
 
@@ -147,13 +158,13 @@ function estaDentroDelHorario() {
   let bloques = [];
   if ([1, 3, 5].includes(diaSemana)) { // lunes, miércoles, viernes
     bloques = [
-      { inicio: "09:30", fin: "12:30" },
-      { inicio: "16:30", fin: "19:30" },
+      { inicio: "09:30", fin: "13:00" },
+      { inicio: "16:30", fin: "20:00" },
     ];
   } else if ([2, 4].includes(diaSemana)) { // martes, jueves
     bloques = [
-      { inicio: "10:30", fin: "12:30" },
-      { inicio: "16:30", fin: "19:30" },
+      { inicio: "09:30", fin: "13:00" },
+      { inicio: "16:30", fin: "20:00" },
     ];
   } else {
     return false; // Sábado y domingo cerrado
@@ -166,14 +177,6 @@ function estaDentroDelHorario() {
     return ahora.isAfter(inicioHora) && ahora.isBefore(finHora);
   });
 }
-
-function leerConfiguracion() {
-  const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
-  const fechaEspecial = contenido[0].trim();
-  const mensajeExtra = contenido.slice(2).join("\n").trim()
-  return { fechaEspecial, mensajeExtra };
-}
-
 
 try {
 
@@ -318,10 +321,11 @@ try {
       return res.status(400).json({ message: 'Número no proporcionado', error: 'Número no proporcionado' });
     }
 
-
-    const captchaToken = req.body.captchaToken;
-    if (!captchaToken) {
-      return res.status(400).json({ error: 'Captcha no enviado' });
+    if (environment === 'production') {
+      const captchaToken = req.body.captchaToken;
+      if (!captchaToken) {
+        return res.status(400).json({ error: 'Captcha no enviado' });
+      }
     }
 
     /*     // Verificar con Google
@@ -346,7 +350,7 @@ try {
     try {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${sheetName}!D4:H`, // D = cuenta, E = clave, H = contacto
+        range: `${sheetName}!D4:M`, // D = cuenta, E = clave, H = contacto
       });
 
       const rows = response.data.values;
@@ -356,15 +360,25 @@ try {
 
       const cuentaIndex = 0; // columna D
       const claveIndex = 1;  // columna E
+      const activoIndex = 2; // columna F
       const contactoIndex = 4; // columna H (índice relativo en rango D:H)
+      const contactoIndex2 = 9 // columna M (índice relativo en rango D:M)
+      const vencimientoIndex = 5; // columna I
 
       const normalizar = str => str.replace(/\D/g, '').replace(/^54/, '');
       const numeroNormalizado = normalizar(numero);
 
-      const coincidencias = rows.filter(row => {
+      const coincidencias1 = rows.filter(row => {
         const contacto = normalizar(row[contactoIndex] || '');
-        return contacto === numeroNormalizado;
+        if (row[activoIndex] === "f") return contacto === numeroNormalizado;
       });
+
+      const coincidencias2 = rows.filter(row => {
+        const contacto = normalizar(row[contactoIndex2] || '');
+        if (row[activoIndex] === "f") return contacto === numeroNormalizado;
+      });
+
+      const coincidencias = [...coincidencias1, ...coincidencias2];
 
       if (coincidencias.length === 0) {
         return res.status(404).json({ message: 'Número no encontrado', error: 'Número no encontrado' });
@@ -376,9 +390,10 @@ try {
       }));
       const recipient = numero.startsWith("5") ? numero + "@c.us" : "549" + numero + "@c.us"
       const aenviar = recipient.replaceAll(" ", "").replaceAll("-", "").replaceAll("(", "").replaceAll(")", "")
+      const ctamplay = JSON.stringify(resultados).replaceAll("cuenta", "📧").replaceAll("clave", "🔒").replaceAll('{', "").replaceAll('}', "").replaceAll('"', "").replaceAll(',', " | ").replaceAll(':', " ").replaceAll('-', "\n\n")
       const params = {
         chatId: aenviar, // data.message.from,
-        message: "Aqui va su usuario y clave: \n\n" + JSON.stringify(resultados) + "\n\nMuchas gracias", //mensajeAusencia,
+        message: "Te paso usuario y clave: \n\n" + ctamplay + "\n\nMuchas gracias", //mensajeAusencia,
         // replyToMessageId: data.message.id._serialized // objRecibe.serial
       }
       console.log(params.chatId)
@@ -425,17 +440,23 @@ try {
     // res.status(200)
   })
 
-  let mensajeAusencia = 'Hola! soy 🤖 BOT-In: Ahora no hay agentes...\n\n'
+  let mensajeAusencia = '👋Hola! soy 🤖 *BOT-In*: _Tu asistente virtual_\n\n'
   let textoarchivo = ''
 
   // evento recibido desde waapi
   app.post('/wapp/receipt/', async (req, res) => {
+    function leerConfiguracion() {
+      const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
+      const fechaEspecial = contenido[0].trim();
+      const mensajeExtra = contenido.slice(2).join("\n").trim()
+      return { fechaEspecial, mensajeExtra };
+    }
     const { event, instanceId, data } = req.body
     const autor = process.env.AUTOR
     const idUsuario = data.message.from
-
     const hoy = dayjs().tz(TZ).format("DD/MM"); // dayjs().format("DD/MM");
     const { fechaEspecial, mensajeExtra } = leerConfiguracion();
+    console.log("Fecha especial:" + fechaEspecial + "Evento: " + event + ", Tipo de mensaje: " + data.message.type + ", De: " + data.message.from + ", Para: " + data.message.to + ", id: " + data.message.id._serialized)
 
     // Leer el archivo y generar un array con los números de WhatsApp
     function obtenerNumerosDesdeArchivo(rutaArchivo) {
@@ -477,6 +498,8 @@ try {
           serial: data.message.id._serialized
         }
         console.log(objRecibe)
+
+        // si es mensaje de audio y no es de un contacto en exclusion, respondemos que no escuchamos audios
         if ((data.message.type === 'ptt' || data.message.type === 'audio')) { // si entra mensaje de audio
           if (excludedPhones.includes(data.message.from)) { // si es de un contacto en exclusion
             console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario permitido", data.message.from)
@@ -511,21 +534,56 @@ try {
         // además de los mensajes de audio, si es un mensaje de texto, respondemos en caso de fuera de horario
         console.log("hoy", hoy, "ahora", dayjs().tz(TZ).format("DD/MM HH:mm:ss"), "esta en horario", estaDentroDelHorario())
 
-        if (hoy === fechaEspecial || !estaDentroDelHorario()) {
+        const fecha1 = fechaEspecial; // formato dd/mm dia cerrado
+        const fecha2 = hoy; // formato dd/mm fecha de hoy
+
+        // Función para convertir "dd/mm" a Date (usando año actual)
+        const parseFecha = (str) => {
+          const [dia, mes] = str.split("/").map(Number);
+          const año = new Date().getFullYear();
+          return new Date(año, mes - 1, dia);
+        };
+
+        const f1 = parseFecha(fecha1);
+        const f2 = parseFecha(fecha2);
+
+        let resultado = "";
+        let fechasuperior = false
+
+        if (f1 < f2) {
+          resultado = `${fecha1} es inferior a ${fecha2}`
+          fechasuperior = true
+        }
+        else if (f1 > f2) {
+          resultado = `${fecha1} es superior a ${fecha2}`;
+          fechasuperior = false
+        }
+        else resultado = `${fecha1} es igual a ${fecha2}`;
+
+
+        const hoymenorfecha = resultado
+
+        console.log("hoy menor a fecha especial", hoymenorfecha, fechasuperior)
+        // si es dia especial o fuera de horario, y no es mensaje del mismo numero del bot
+        if ((hoy === fechaEspecial || !estaDentroDelHorario()) && data.message.from !== '5492342513085@c.us') { // si es fuera de horario o dia especial y es mensaje de texto
           // cache de 4 horas
           if (cache.has(idUsuario)) {
             console.log("Mensaje recibido (ya se respondió recientemente")
             return res.status(200).json({ mensaje: "Mensaje recibido (ya se respondió recientemente)" });
           }
           const newmessage00 = "🤖 Te paso algunas opciones, *para que veas, mientras vuelven los agentes*\n\n"
-          const newmessage01 = "🔥 *Anuncios, info e incidencias*: 👉 https://bit.ly/avisarte 👈 (tap/presiona en enlace)\n"
-          const newmessage02 = "🔓 *Recupera usuario y clave*: 👉 https://bit.ly/usermplay 👈 (tap/presiona en enlace)\n"
-          const newmessage03 = "♾️ *Instalar la app*: 👉 https://bit.ly/iapptivi 👈 (tap/presiona en enlace)\n"
-          const newmessage04 = "🤑 *Si sabe monto y desea pagar*: 👉 https://bit.ly/mps2k 👈 (tap/presiona en enlace)\n\n"
+          const newmessage01 = "🌐 *Nuestros servicios y productos*: 👉 https://bit.ly/sib2000 👈 (tap/presiona en enlace)\n"
+          const newmessage02 = "🔥 *Anuncios, info e incidencias*: 👉 https://bit.ly/avisarte 👈 (tap/presiona en enlace)\n"
+          const newmessage03 = "🔓 *Recupera usuario y clave*: 👉 https://bit.ly/usermplay 👈 (tap/presiona en enlace)\n"
+          const newmessage04 = "♾️ *Instalar la app*: 👉 https://bit.ly/iapptivi 👈 (tap/presiona en enlace)\n"
+          const newmessage05 = "🤑 *Si sabe monto y desea pagar*: 👉 https://bit.ly/mps2k 👈 (tap/presiona en enlace)\n"
+          const newmessage06 = "📢 *Enterate antes* Novedades, actualizaciones de app/precios en Canal WA: 👉 https://bit.ly/canalwamp 👈 (tap/presiona en enlace) \n\n"
 
-          const newmessage = newmessage00 + newmessage01 + newmessage02 + newmessage03 + newmessage04
-          const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n` : fechaEspecial.length < 4 ? "" : "Día " + fechaEspecial + " *CERRADO*\n\n"
-          const respuesta = mensajeAusencia + respuestafinal + newmessage + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \nMartes y jueves: \n🕥10,30 a 🕧12,30 y 🕟16,30 a 🕢19,30 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
+          const newmessage = newmessage00 + newmessage01 + newmessage02 + newmessage03 + newmessage04 + newmessage05 + newmessage06
+
+
+          const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n` : fechasuperior === false ? /* fechaEspecial.length < 4 ?  "" */ "Día " + fechaEspecial + " *CERRADO*\n\n" : ""
+          const respuesta = mensajeAusencia + respuestafinal + newmessage + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕐13,00 y 🕟16,30 a 🕗20,00 \nMartes y jueves: \n🕥10,30 a 🕧13,00 y 🕟16,30 a 🕢20,00 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
           cache.set(idUsuario, true, 10800); // 3 horas = 10800 segundos
           // return res.status(200).json({ mensaje: respuesta });
 
@@ -632,7 +690,7 @@ try {
   })
 
   //init scheduler
-  programador_tareas();
+  if (environment === "production") { programador_tareas(); }
 
   app.post('/wapp/send-mail', async (req, res) => {
     const { message, phone, name, email, correo, web } = req.body
