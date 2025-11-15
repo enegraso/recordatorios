@@ -564,6 +564,7 @@ try {
         const hoymenorfecha = resultado
 
         console.log("hoy menor a fecha especial", hoymenorfecha, fechasuperior)
+
         // si es dia especial o fuera de horario, y no es mensaje del mismo numero del bot
         if ((hoy === fechaEspecial || !estaDentroDelHorario()) && data.message.from !== '5492342513085@c.us') { // si es fuera de horario o dia especial y es mensaje de texto
           // cache de 4 horas
@@ -574,46 +575,80 @@ try {
           const newmessage00 = "🤖 Te paso algunas opciones, *para que veas, mientras vuelven los agentes*\n\n"
           const newmessage01 = "🌐 *Nuestros servicios y productos*: 👉 https://bit.ly/sib2000 👈 (tap/presiona en enlace)\n"
           const newmessage02 = "🔥 *Anuncios, info e incidencias*: 👉 https://bit.ly/avisarte 👈 (tap/presiona en enlace)\n"
-          const newmessage03 = "🔓 *Recupera usuario y clave*: 👉 https://bit.ly/usermplay 👈 (tap/presiona en enlace)\n"
-          const newmessage04 = "♾️ *Instalar la app*: 👉 https://bit.ly/iapptivi 👈 (tap/presiona en enlace)\n"
+          const newmessage03 = "🔓 *Recupera usuario y clave app 📺*: 👉 https://bit.ly/usermplay 👈 (tap/presiona en enlace)\n"
+          const newmessage04 = "♾️ *Instalar la app 📺*: 👉 https://bit.ly/iapptivi 👈 (tap/presiona en enlace)\n"
           const newmessage05 = "🤑 *Si sabe monto y desea pagar*: 👉 https://bit.ly/mps2k 👈 (tap/presiona en enlace)\n"
-          const newmessage06 = "📢 *Enterate antes* Novedades, actualizaciones de app/precios en Canal WA: 👉 https://bit.ly/canalwamp 👈 (tap/presiona en enlace) \n\n"
+          // const newmessage06 = "📢 *Enterate antes* Novedades, actualizaciones de app📺/precios en Canal WA: 👉 https://bit.ly/canalwamp 👈 (tap/presiona en enlace) \n\n"
 
-          const newmessage = newmessage00 + newmessage01 + newmessage02 + newmessage03 + newmessage04 + newmessage05 + newmessage06
+          const newmessage = newmessage00 + newmessage01 + newmessage02 + newmessage03 + newmessage04 + newmessage05 // + newmessage06
 
 
-          const respuestafinal = hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n` : fechasuperior === false ? /* fechaEspecial.length < 4 ?  "" */ "Día " + fechaEspecial + " *CERRADO*\n\n" : ""
-          const respuesta = mensajeAusencia + respuestafinal + newmessage + "Horario de Atención: \nLunes, miércoles y Viernes:\n🕤9,30 a 🕐13,00 y 🕟16,30 a 🕗20,00 \nMartes y jueves: \n🕥10,30 a 🕧13,00 y 🕟16,30 a 🕢20,00 \n*Sábados, domingos y feriados: CERRADO*\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
+          const respuestafinal = hoy === fechaEspecial ? `*Hoy cerrado* \n\n${mensajeExtra} \n\n` : fechasuperior === false ? /* fechaEspecial.length < 4 ?  "" */ "Día " + fechaEspecial + " *CERRADO*\n\n" : ""
+          const respuesta = mensajeAusencia + respuestafinal + newmessage + "\n\nMuchas Gracias. " // `Negocio cerrado. ${mensajeExtra}`;
           cache.set(idUsuario, true, 10800); // 3 horas = 10800 segundos
           // return res.status(200).json({ mensaje: respuesta });
 
-          const params = {
-            chatId: data.message.from,
-            message: respuesta, //mensajeAusencia,
-            // replyToMessageId: data.message.id._serialized // objRecibe.serial
+          if (fechasuperior === false || hoy === fechaEspecial) { // si es dia especial cerrado o fuera de horario o previo al dia especial
+            const params = {
+              chatId: data.message.from,
+              mediaUrl: 'https://km210.com/00cerrado.png',
+              mediaCaption: respuesta, //mensajeAusencia,
+              // replyToMessageId: data.message.id._serialized // objRecibe.serial
+            }
+            const options = {
+              method: 'POST',
+              headers: {
+                accept: 'application/json',
+                'content-type': 'application/json',
+                authorization: autor
+              },
+              body: JSON.stringify(params)
+            };
+            console.log("tipo de Mensaje para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario NO permitido", data.message.from, "aunsencia", mensajeAusencia)
+
+            await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-media', options)
+              .then(response => response.json())
+              .then(response => {
+                console.log(response)
+                console.log('Mensaje fuera de horario respondido');
+              })
+              .catch(err => {
+                console.error(err)
+                console.log('Mensaje NO enviado');
+              });
+
+
+          } else { //dia superior al de cierre segun config txt
+            const params = {
+              chatId: data.message.from,
+              mediaUrl: 'https://km210.com/01cerrado.png',
+              mediaCaption: respuesta, //mensajeAusencia,
+              // replyToMessageId: data.message.id._serialized // objRecibe.serial
+            }
+            const options = {
+              method: 'POST',
+              headers: {
+                accept: 'application/json',
+                'content-type': 'application/json',
+                authorization: autor
+              },
+              body: JSON.stringify(params)
+            };
+            console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario NO permitido", data.message.from, "aunsencia", mensajeAusencia)
+
+            await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-media', options)
+              .then(response => response.json())
+              .then(response => {
+                console.log(response)
+                console.log('Mensaje fuera de horario respondido');
+              })
+              .catch(err => {
+                console.error(err)
+                console.log('Mensaje NO enviado');
+              });
+
+
           }
-          const options = {
-            method: 'POST',
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json',
-              authorization: autor
-            },
-            body: JSON.stringify(params)
-          };
-          console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario NO permitido", data.message.from, "aunsencia", mensajeAusencia)
-
-          await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-message', options)
-            .then(response => response.json())
-            .then(response => {
-              console.log(response)
-              console.log('Mensaje fuera de horario respondido');
-            })
-            .catch(err => {
-              console.error(err)
-              console.log('Mensaje NO enviado');
-            });
-
           //marcar chat como no leido, luego de enviar mensaje de ausencia
 
           const optionsur = {
@@ -635,9 +670,7 @@ try {
               console.error(err)
               console.log('No se pudo marcar como no leído', err);
             });
-        } /* else { */
-
-        /*  } */
+        }
 
       } else {
         console.log("mensaje al espacio not to me")
@@ -748,6 +781,37 @@ try {
   app.get('/wapp', (req, res) => {
     return res.status(200).json({ message: "BackEnd for WAPP - for customer: " })
   })
+
+  const fs = require('fs');
+  const path = require('path');
+  const archivoPath = path.join(__dirname, 'config.txt');
+
+  // GET: Leer archivo
+  app.get('/wap/archivo', (req, res) => {
+    fs.readFile(archivoPath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error al leer el archivo:', err, archivoPath);
+        return res.status(500).send('Error al leer el archivo');
+      }
+      res.send(data);
+    });
+  });
+
+  // POST: Guardar nuevo contenido
+  app.post('/wapp/archivo', (req, res) => {
+    const { contenido } = req.body;
+    if (typeof contenido !== 'string') {
+      return res.status(400).send('Contenido inválido');
+    }
+
+    fs.writeFile(archivoPath, contenido, 'utf8', (err) => {
+      if (err) {
+        console.error('Error al guardar el archivo:', err, archivoPath);
+        return res.status(500).send('Error al guardar el archivo');
+      }
+      res.send('Archivo guardado correctamente');
+    });
+  });
 
 } catch (error) {
   console.log('Error en index', error);
