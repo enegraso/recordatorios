@@ -674,10 +674,8 @@ try {
 
       } else {
         console.log("mensaje al espacio not to me")
-        /*         console.log("mensaje: ", data.message.body)
-                console.log("De: ", data.message.from)
-                console.log("Para:", data.message.to)
-                console.log("Tipo: ", data.message.type) */
+                console.log("mensaje: ", data.message)
+                console.log("==============================")
       }
     }
 
@@ -787,7 +785,7 @@ try {
   const archivoPath = path.join(__dirname, 'config.txt');
 
   // GET: Leer archivo
-  app.get('/wap/archivo', (req, res) => {
+  app.get('/wapp/archivo', (req, res) => {
     fs.readFile(archivoPath, 'utf8', (err, data) => {
       if (err) {
         console.error('Error al leer el archivo:', err, archivoPath);
