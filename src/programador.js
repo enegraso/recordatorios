@@ -52,9 +52,9 @@ function programador_tareas() {
     const respuestafinal = hoy > fechaEspecial ? mensajeHora : hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n${mensajeHora}` : fechaEspecial.length < 2 ? mensajeHora : "Día " + fechaEspecial + " *CERRADO*\n\n" + mensajeHora
 
     const MSG_VENCE_AGO = "🤖 Mensaje de *Bot*: \n\n" +
-        "👋 Hola -NB-! Cómo estás? Aproximadamente en *50 horas* vence tu abono ♾️Mul7ivisi0nPl4y.\n\n" +
-        "Desearía renovar?\n\n" +
-        "*$ 11000* y medios de pago: *👉 https://bit.ly/s2kmail 👈* (tap/presionar en el enlace) \n\n" +
+        "👋 Hola -NB- app ♾️Mul7ivisi0nPl4y!\n\n" +
+        "Y -CINE- app 🎬🎞️📽️📺. Cómo estás? Aproximadamente en *50 horas* vence tu abono\nDesearía renovar?\n\n" +
+        "Las 2 apps x *$ 11000* y medios de pago: *👉 https://bit.ly/s2kmail 👈* (tap/presionar en el enlace) \n\n" +
         "Enterate antes: Novedades, actualizaciones de app/precios en 📢 Canal WA: bit.ly/canalwamp \n\n" +
         "*Envíe comprobante de pago*, luego de hacerlo. \n" +
         "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración. " +
@@ -165,6 +165,7 @@ function programador_tareas() {
                                         saludo = saludo.replaceAll("-PREDNI-", preciodni)
                                         saludo = saludo.replaceAll("-LDNI-", linkdni)
                                         saludo = saludo.replaceAll("-VTO-", i.nombre)
+                                        saludo = saludo.replaceAll("-CINE-", i.respal === "no" ? "NO POSEE" : i.respal)
                                         const params = {
                                             chatId: CONTACTOCEL,
                                             message: saludo

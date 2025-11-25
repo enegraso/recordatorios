@@ -674,8 +674,13 @@ try {
 
       } else {
         console.log("mensaje al espacio not to me")
-                console.log("mensaje: ", data.message)
-                console.log("==============================")
+        console.log("mensaje: ", data.message.body)
+        console.log("De: ", data.message.from)
+        console.log("Para:", data.message.to)
+        console.log("Tipo: ", data.message.type)
+        console.log("id: ", data.message.id._serialized)
+        console.log("Autor: ", data.message.author)
+        console.log("==============================")
       }
     }
 
