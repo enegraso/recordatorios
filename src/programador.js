@@ -52,10 +52,10 @@ function programador_tareas() {
     const respuestafinal = hoy > fechaEspecial ? mensajeHora : hoy === fechaEspecial ? `Hoy *cerrado* \n\n${mensajeExtra} \n\n${mensajeHora}` : fechaEspecial.length < 2 ? mensajeHora : "Día " + fechaEspecial + " *CERRADO*\n\n" + mensajeHora
 
     const MSG_VENCE_AGO = "🤖 Mensaje de *Bot*: \n\n" +
-        "👋 Hola -NB- app ♾️Mul7ivisi0nPl4y!\n\n" +
-        "Y -CINE- app 🎬🎞️📽️📺. Cómo estás? Aproximadamente en *50 horas* vence tu abono\nDesearía renovar?\n\n" +
-        "Las 2 apps x *$ 12000* y medios de pago: *👉 https://bit.ly/s2kmail 👈* (tap/presionar en el enlace) \n\n" +
-        "_*PROMO FIESTAS*_ *3mx25000* Consultanos! \n\n" +
+        "👋 Hola -NB- app ♾️Mul7ivisi0nPl4y!\n" +
+        "Y -CINE- app 🎬🎞️📽️📺 *de regalo*. \n Cómo estás? Aproximadamente en *50 horas* vence tu abono\nDesearía renovar?\n\n" +
+        "Precio *$ 12000* y medios de pago: *👉 https://bit.ly/s2kmail 👈* (tap/presionar en el enlace) \n\n" +
+        "🎅 _*PROMO FIESTAS*_ *3mx25000* Consultanos! \n\n" +
         "Enterate antes: Novedades, actualizaciones de app/precios en 📢 Canal WA: bit.ly/canalwamp \n\n" +
         "*Envíe comprobante de pago*, luego de hacerlo. \n" +
         "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración. " +
@@ -63,6 +63,7 @@ function programador_tareas() {
         respuestafinal + "-VTO-" +
         "Si ya abonó, por favor avísenos y disculpe la molestia.\n\n" +
         "Muchas gracias. 🤝"
+
 
     const MSG_PANEL = "🤖 Mensaje de *Bot*: \n\n" +
         "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
@@ -112,6 +113,14 @@ function programador_tareas() {
         respuestafinal +
         'Muchas gracias! 🤝'
 
+    const MSG_NEW_APP = "👋 Hola! Como estás?\n" +
+        "Te comento que hemos lanzado nuestra nueva app 📲x-player con muchas mejoras y novedades.\n\n" +
+        "Te dejo el link para que la puedas descargar e instalar: 👉 https://www.xplayer.top/app 👈 (tap/presionar en el enlace) \n\n" +
+        "O, descarga con Código Downloader: 803159\n\n" +
+        "Para iniciar prueba: ingresa codigo de vendedor: 3016.\n\n" +
+        "Cualquier duda o consulta, estoy a tu disposición.\n\n" +
+        "Muchas gracias! 🤝"
+
     const tiempo = horario // '0 56 11 * * *' // Everyday at 10:30 AM
     if (cron.validate(tiempo)) {
         console.log('Cron inicializado');
@@ -155,6 +164,9 @@ function programador_tareas() {
                                 var CONTACTOCEL = ""
                                 if (i.celu.slice(0, 2) === "54") { CONTACTOCEL = i.celu + '@c.us' }
                                 else { CONTACTOCEL = i.celu + '@c.us' }
+                                var CONTACTOPROP = ""
+                                if (i.propio.slice(0, 2) === "54") { CONTACTOPROP = i.propio + '@c.us' }
+                                else { CONTACTOPROP = i.propio + '@c.us' }
                                 console.log(CONTACTOCEL)
                                 if (i.rol === "final") {
                                     console.log(i.pago <= venci, i.pago, venci)
@@ -166,9 +178,15 @@ function programador_tareas() {
                                         saludo = saludo.replaceAll("-PREDNI-", preciodni)
                                         saludo = saludo.replaceAll("-LDNI-", linkdni)
                                         saludo = saludo.replaceAll("-VTO-", i.nombre)
-                                        saludo = saludo.replaceAll("-CINE-", i.respal === "no" ? "NO POSEE" : i.respal)
+                                        saludo = saludo.replaceAll("-CINE-", i.cin3 === "no" ? "NO POSEE" : i.cin3)
+                                        let destino = ""
+                                        if (i.nombre > venci /* || !i.nombre || i.nombre === "" */) {
+                                            destino = CONTACTOPROP
+                                        } else {
+                                            destino = CONTACTOCEL
+                                        }
                                         const params = {
-                                            chatId: CONTACTOCEL,
+                                            chatId: destino,
                                             message: saludo
                                         }
                                         const options = {
