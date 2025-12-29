@@ -55,8 +55,7 @@ function programador_tareas() {
         "👋 Hola -NB- app ♾️Mul7ivisi0nPl4y!\n" +
         "Y -CINE- app 🎬🎞️📽️📺 *de regalo*. \n Cómo estás? Aproximadamente en *50 horas* vence tu abono\nDesearía renovar?\n\n" +
         "Precio *$ 12000* y medios de pago: *👉 https://bit.ly/s2kmail 👈* (tap/presionar en el enlace) \n\n" +
-        "🎅 _*PROMO FIESTAS*_ *3mx30.000* Consultanos! \n\n" +
-        "Enterate antes: Novedades, actualizaciones de app/precios en 📢 Canal WA: bit.ly/canalwamp \n\n" +
+        "📢 Enterate de novedades, incidencias, cambios, actualizaciones: 💬 👉  https://whatsapp.com/channel/0029VbAeEvA3WHTY2Dgipo0T 👈 (tap/presionar en el enlace). Active la 🔔 para recibir las notificaciones \n\n" +
         "*Envíe comprobante de pago*, luego de hacerlo. \n" +
         "📧 Si se vence la cuenta, se perderá el acceso hasta su regeneración. " +
         "Renovaciones y Regeneraciones de cuentas *UNICAMENTE EN HORARIO DE ATENCIÓN* \n\n" +
@@ -68,6 +67,7 @@ function programador_tareas() {
     const MSG_PANEL = "🤖 Mensaje de *Bot*: \n\n" +
         "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
         'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso.\n\n' +
+        "📢 Enterate de novedades, incidencias, cambios, actualizaciones: https://whatsapp.com/channel/0029VbBxIUDEKyZNSzPt0A2E (tap/presionar en el enlace). Active la 🔔 para recibir las notificaciones \n\n"+
         "Importes y 💳 medios de pago en el siguiente link: \n" +
         "👉 https://bit.ly/s2krefer 👈 (tap/presionar en el enlace) \n\n" +
         respuestafinal +
