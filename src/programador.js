@@ -121,6 +121,20 @@ function programador_tareas() {
         "Cualquier duda o consulta, estoy a tu disposición.\n\n" +
         "Muchas gracias! 🤝"
 
+    const MSG_VENCE_xpu = "🤖 Mensaje de *Bot* \n\n" +
+        "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu abono mensual ✖️🅿️layer📽️📺\n\n" +
+        'Si deseas renovar y, no perder el acceso, me avisas y te paso precio actual. 💳 Y medios de pago.\n' +
+        '\n' +
+        respuestafinal +
+        'Muchas gracias! 🤝'
+
+    const MSG_VENCE_xpv = "🤖 Mensaje de *Bot*: \n\n" +
+        "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel* ✖️🅿️l4yer📽️📺 \n" +
+        'Si deseas renovar, adquiriendo créditos ilimitados y, no perder el acceso.\n\n' +
+        "Importe 20 usdt y a 🍋TAG $fortiz.lemon \n\n" +
+        respuestafinal +
+        'Muchas gracias! 🤝'
+
     const tiempo = horario // '0 56 11 * * *' // Everyday at 10:30 AM
     if (cron.validate(tiempo)) {
         console.log('Cron inicializado');
@@ -220,32 +234,7 @@ function programador_tareas() {
                                         const limite = new Date(2025, 8, 30, 23, 59, 59);
                                         // Ojo: en JS los meses arrancan en 0 → septiembre es 8
 
-                                        let mensaje1 = "🤖 Mensaje de *Bot*: \n\n" +
-                                            "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
-                                            'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso. ' +
-                                            "O, si tienes muchos créditos, abonando el canon mensual de $ 45000, que se te volverá a vencer el 10/11/2025. Y en este lapcso de tiempo compras créditos si necesitas. \n\n" +
-                                            "Importes y 💳 medios de pago en el siguiente link: \n" +
-                                            "👉 https://bit.ly/s2krefer 👈 (tap/presionar en el enlace) \n\n" +
-                                            respuestafinal +
-
-                                            "Enterate antes: Novedades, actualizaciones de app/precios en 📢 Canal WA: 👉 https://bit.ly/canalsel 👈 (tap/presiona en enlace) \n\n" +
-                                            'Muchas gracias! 🤝';
-                                        let mensaje2 = "🤖 Mensaje de *Bot*: \n\n" +
-                                            "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
-                                            "El abono del canon mensual es de $ 45000. Y si deseas comprar créditos, puedes hacerlo o cuando lo necesites. \n\n" +
-                                            "Importes y 💳 medios de pago en el siguiente link: \n" +
-                                            "👉 https://bit.ly/s2krefer 👈 (tap/presionar en el enlace) \n\n" +
-                                            respuestafinal +
-                                            "Enterate antes: Novedades, actualizaciones de app/precios en 📢 Canal WA: 👉 https://bit.ly/canalsel 👈 (tap/presiona en enlace) \n\n" +
-                                            'Muchas gracias! 🤝';
-                                        let mensaje = ""
-                                        if (hoy <= limite) {
-                                            mensaje = mensaje1
-                                        } else {
-                                            mensaje = mensaje2
-                                        }
-
-                                        let saludo = mensaje.replaceAll("-NB-", i.cuenta) // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                        let saludo = MSG_PANEL.replaceAll("-NB-", i.cuenta) // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
                                         const params = {
                                             chatId: CONTACTOCEL,
                                             message: saludo
@@ -328,6 +317,66 @@ function programador_tareas() {
                                     console.log(i.pago <= venci, i.pago, venci)
                                     if (i.pago <= venci || !i.pago) {
                                         let saludo = MSG_VENCE_AE.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                        // console.log(saludo)
+                                        const params = {
+                                            chatId: CONTACTOCEL,
+                                            message: saludo
+                                        }
+                                        const options = {
+                                            method: 'POST',
+                                            headers: {
+                                                accept: 'application/json',
+                                                'content-type': 'application/json',
+                                                authorization: autor
+                                            },
+                                            body: JSON.stringify(params)
+                                        };
+                                        await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                            .then(response => response.json())
+                                            .then(response => {
+                                                console.log(response)
+                                                console.log('Mensaje enviado final');
+                                            })
+                                            .catch(err => {
+                                                console.error(err)
+                                                console.log('Mensaje NO enviado');
+                                            });
+                                        // await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                                    }
+                                } else if (i.rol === "xplayer") {
+                                    console.log(i.pago <= venci, i.pago, venci)
+                                    if (i.pago <= venci || !i.pago) {
+                                        let saludo = MSG_VENCE_xpu.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
+                                        // console.log(saludo)
+                                        const params = {
+                                            chatId: CONTACTOCEL,
+                                            message: saludo
+                                        }
+                                        const options = {
+                                            method: 'POST',
+                                            headers: {
+                                                accept: 'application/json',
+                                                'content-type': 'application/json',
+                                                authorization: autor
+                                            },
+                                            body: JSON.stringify(params)
+                                        };
+                                        await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
+                                            .then(response => response.json())
+                                            .then(response => {
+                                                console.log(response)
+                                                console.log('Mensaje enviado final');
+                                            })
+                                            .catch(err => {
+                                                console.error(err)
+                                                console.log('Mensaje NO enviado');
+                                            });
+                                        // await enviarMensaje(cliente, CONTACTOCEL, saludo);
+                                    }
+                                } else if (i.rol === "xpventa") {
+                                    console.log(i.pago <= venci, i.pago, venci)
+                                    if (i.pago <= venci || !i.pago) {
+                                        let saludo = MSG_VENCE_xpv.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
                                         // console.log(saludo)
                                         const params = {
                                             chatId: CONTACTOCEL,
