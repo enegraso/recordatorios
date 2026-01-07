@@ -65,11 +65,12 @@ function programador_tareas() {
 
 
     const MSG_PANEL = "🤖 Mensaje de *Bot*: \n\n" +
-        "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se vence la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
-        'Si deseas renovar, adquiriendo 💰 paquete de créditos y, no perder el acceso.\n\n' +
+        "👋 Hola -NB-! Cómo estás? Te aviso que en *3 dias* se *vence el canon* de la suscripción de tu *panel ♾️Mul7ivisi0nPl4y y panel 🐦‍🔥fen1x-cin3📽️ \n" +
+        'Avisanos si deseas renovar y no perder el acceso.\n\n' +
+        "Obtenga novedades y precios de Canon y Packs:\n" +
+        "👉 bit.ly/s2krefer 👈 (tap/presionar en el enlace)\n" +
+        "Al acceder a la web, por favor, actualice la pagina con F5 (🖥️💻) ó deslizando, con su dedo presionando la pantalla, hacia abajo (📱).\n" +
         "📢 Enterate de novedades, incidencias, cambios, actualizaciones: https://whatsapp.com/channel/0029VbBxIUDEKyZNSzPt0A2E (tap/presionar en el enlace). Active la 🔔 para recibir las notificaciones \n\n"+
-        "Importes y 💳 medios de pago en el siguiente link: \n" +
-        "👉 https://bit.ly/s2krefer 👈 (tap/presionar en el enlace) \n\n" +
         respuestafinal +
         'Muchas gracias! 🤝'
 
@@ -175,15 +176,19 @@ function programador_tareas() {
                         .then((response) => {
                             // console.log(response.data)
                             response.data.map(async i => {
+                                console.log(i.cuenta, i.rol, i.pago, venci, i.celu, i.propio)
                                 var CONTACTOCEL = ""
                                 if (i.celu.slice(0, 2) === "54") { CONTACTOCEL = i.celu + '@c.us' }
                                 else { CONTACTOCEL = i.celu + '@c.us' }
                                 var CONTACTOPROP = ""
-                                if (i.propio.slice(0, 2) === "54") { CONTACTOPROP = i.propio + '@c.us' }
+                                if (!i.propio) { CONTACTOPROP = "no" } 
+                                else if (i.propio.slice(0, 2) === "54") { CONTACTOPROP = i.propio + '@c.us' }
                                 else { CONTACTOPROP = i.propio + '@c.us' }
                                 console.log(CONTACTOCEL)
+                                // anular para que solo mande a partir de referidos
                                 if (i.rol === "final") {
                                     console.log(i.pago <= venci, i.pago, venci)
+                                    
                                     if (i.pago <= venci || !i.pago || i.pago === "") {
                                         let saludo = MSG_VENCE_AGO.replaceAll("-NB-", i.cuenta)  // MSG_SALUDOS[Math.floor(Math.random() * MSG_SALUDOS.length)];
                                         saludo = saludo.replaceAll("-PRE-", precio)
@@ -194,7 +199,7 @@ function programador_tareas() {
                                         saludo = saludo.replaceAll("-VTO-", i.nombre)
                                         saludo = saludo.replaceAll("-CINE-", i.cin3 === "no" ? "NO POSEE" : i.cin3)
                                         let destino = ""
-                                        if (i.nombre > venci /* || !i.nombre || i.nombre === "" */) {
+                                        if (i.nombre > venci ) { // || !i.nombre || i.nombre === ""
                                             destino = CONTACTOPROP
                                         } else {
                                             destino = CONTACTOCEL
@@ -226,6 +231,7 @@ function programador_tareas() {
 
                                     }
                                 } else if (i.rol === "Referido") {
+                                    console.log("entro referido")
                                     console.log(i.pago <= venci, i.pago, venci)
                                     if (i.pago <= venci || !i.pago) {
                                         const hoy = new Date();
