@@ -217,6 +217,7 @@ function programador_tareas() {
                                             },
                                             body: JSON.stringify(params)
                                         };
+                                        console.log("destino final: ", destino,"Options: ", options.body)
                                         await fetch('https://waapi.app/api/v1/instances/' + idinsta + '/client/action/send-message', options)
                                             .then(response => response.json())
                                             .then(response => {

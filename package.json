@@ -22,7 +22,9 @@
     "node-cache": "^5.1.2",
     "node-cron": "^3.0.2",
     "nodemailer": "^6.9.16",
+    "puppeteer": "^24.35.0",
     "qrcode": "^1.5.3",
-    "whatsapp-web.js": "^1.24.0"
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.4"
   }
 }
