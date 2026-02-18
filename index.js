@@ -12,6 +12,8 @@ const QRcode = require('qrcode');
 const axios = require('axios');
 const n8nurl = process.env.N8NURL
 
+const crypto = require("crypto");
+
 const sheets = require('./googleClient');
 
 const spreadsheetId = process.env.SPREADSHEET_ID;
@@ -30,6 +32,7 @@ const isBetween = require("dayjs/plugin/isBetween");
 const NodeCache = require("node-cache");
 const e = require('express');
 const { env, send } = require('process');
+const { devNull } = require('os');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -444,11 +447,101 @@ try {
   let mensajeAusencia = '👋Hola! soy 🤖 *BOT-In*: _Tu asistente virtual_\n\n'
   let textoarchivo = ''
 
-  app.post('/wapp/receipt/', async (req, res) => {
+  // funciones para convertir a audio comun y reproducible, no implementada aún
+
+  // HKDF helper
+  function hkdf(mediaKey, length, info) {
+    const salt = Buffer.alloc(32, 0);
+
+    const derived = crypto.hkdfSync(
+      "sha256",
+      mediaKey,
+      salt,
+      Buffer.from(info),
+      length
+    );
+
+    // 👇 ESTA ES LA CLAVE
+    return Buffer.from(derived);
+  }
+
+  async function decryptWhatsAppAudio(mmsUrl, mediaKeyBase64) {
+    // 1️⃣ Descargar .enc
+    const response = await axios.get(mmsUrl, {
+      responseType: "arraybuffer",
+    });
+
+    // const encrypted = Buffer.from(response.data);
+    const encrypted = Buffer.from(new Uint8Array(response.data));
+
+    // 2️⃣ Separar data y mac
+    const file = encrypted.slice(0, -10);
+    const mac = encrypted.slice(-10);
+
+    // 3️⃣ Derivar claves
+    const mediaKey = Buffer.from(mediaKeyBase64, "base64");
+    const expandedKey = hkdf(mediaKey, 112, "WhatsApp Audio Keys");
+
+    const iv = expandedKey.slice(0, 16);
+    const cipherKey = expandedKey.slice(16, 48);
+    const macKey = expandedKey.slice(48, 80);
+
+    // 4️⃣ Validar MAC
+    const hmac = crypto.createHmac("sha256", macKey);
+    hmac.update(Buffer.concat([iv, file]));
+    const computedMac = hmac.digest().slice(0, 10);
+
+    if (!computedMac.equals(mac)) {
+      throw new Error("MAC inválido");
+    }
+
+    // 5️⃣ Descifrar
+    const decipher = crypto.createDecipheriv("aes-256-cbc", cipherKey, iv);
+    const decrypted = Buffer.concat([
+      decipher.update(file),
+      decipher.final(),
+    ]);
+
+    return decrypted; // buffer .ogg real
+  }
+
+  // fin funciones para convertir a audio comun y reproducible, no implementada aún
+
+  app.post('/wapp/receipt', async (req, res) => { // Recibo mensaje de la api waapi
     try {
       const { event, instanceId, data } = req.body;
 
-      // Leer el archivo y generar un array con los números de WhatsApp
+      // 🔥 DEDUPLICACIÓN
+      const messageId = data?.message?.id?._serialized;
+
+      if (!messageId) {
+        console.log("Mensaje sin ID, continúo igual");
+      } else {
+        if (processedMessages.has(messageId)) {
+          console.log("Mensaje duplicado ignorado:", messageId);
+          return res.sendStatus(200);
+        }
+
+        processedMessages.add(messageId);
+
+        setTimeout(() => {
+          processedMessages.delete(messageId);
+        }, 60000); // 1 minuto
+      }
+
+      // 👇 DESPUÉS DE ESTO VA TODO TU CÓDIGO ACTUAL
+
+      const hoy = dayjs().tz(TZ).format("DD/MM"); // dayjs().format("DD/MM");
+      // si es dia especial o fuera de horario, y no es mensaje del mismo numero del bot
+      // leer configuracion para fechas especiales
+      function leerConfiguracion() {
+        const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
+        const fechaEspecial = contenido[0].trim();
+        const mensajeExtra = contenido.slice(2).join("\n").trim()
+        return { fechaEspecial, mensajeExtra };
+      }
+      const { fechaEspecial, mensajeExtra } = leerConfiguracion();
+      // Leer el archivo y generar un array con los números de WhatsApp que no pasaran por n8n
       function obtenerNumerosDesdeArchivo(rutaArchivo) {
         try {
           const data = fs.readFileSync(rutaArchivo, 'utf8');
@@ -462,89 +555,169 @@ try {
           return [];
         }
       }
-
-      // Función para descargar audio desde WaAPI
- /*      async function descargarAudioWaapi(message, instanceId, autor) {
-        if (!message.deprecatedMms3Url) return null;
-        console.log('Descargando audio desde WaAPI:', message.deprecatedMms3Url);
-        console.log('Instance ID:', instanceId);
-        console.log('Authorization:', autor);
-        console.log('Mensaje completo:', message);
-        const url = `https://waapi.app/api/v1/instances/${instanceId}/client/action/download-media`;
-
-        const response = await axios.post(
-          url,
-          {
-            url: message.deprecatedMms3Url
-          },
-          {
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json',
-              authorization: autor
-            }
-          }
-        );
-
-        // WaAPI responde base64
-        return response.data?.base64 || null;
-      } */
-
-
-      // 1. Validaciones mínimas (una sola vez)
-      if (
-        event !== 'message' ||
-        data.message.from === 'status@broadcast' ||
-        data.message.from.includes('@g.us') ||
-        data.message.to !== '5492342513085@c.us'
-      ) {
-        return res.sendStatus(200);
-      }
-
-      // 2. Leer exclusiones UNA sola vez
       const excludedPhones = obtenerNumerosDesdeArchivo('numeros.txt');
-      if (excludedPhones.includes(data.message.from)) {
+      // 1. Validaciones mínimas (una sola vez) no procesar
+      if (
+        data.message.from === "5492342513085@c.us" ||
+        data.message.from === "status@broadcast" ||
+        data.message.from.includes("@g.us")
+      ) {
+        console.log("Evento no procesado. Evento: " + event + ", De: " + data.message.from + ", Para: " + data.message.to)
         return res.sendStatus(200);
       }
+      console.log("Hoy: " + hoy + "\n, Fecha Especial: " + fechaEspecial + "\n, Dentro del horario: " + estaDentroDelHorario() + "\n, De: " + data.message.from + "\n, Nombre: " + data.message.notifyName)
+      ///////////////////////////
+      // Si yo no estotoy trabajando, responder mensaje de ausencia con n8n
+      ///////////////////////////
+      if ((hoy === fechaEspecial || !estaDentroDelHorario()) && data.message.from !== '5492342513085@c.us') { // si es fuera de horario o dia especial y es mensaje de texto
+        // insertar IA n8n
 
-      // 3. Normalizar datos
-      const remitente = data.message.from.replace('@c.us', '');
+        console.log("Evento recibido de waapi", data);
 
-      // procesar imagen
-      let imageBase64 = null;
+        // 2. Leer exclusiones UNA sola vez
 
-      if (data.message.type === 'image') {
-        imageBase64 = data.message._data?.body || null;
+        if (excludedPhones.includes(data.message.from)) {
+          return res.sendStatus(200);
+        }
+
+        // 3. Normalizar datos
+        const remitente = data.message.from.replace('@c.us', '');
+
+        // procesar imagen
+        let imageBase64 = null;
+        let audioBase64 = null;
+
+        if (data.message.type === 'image') {
+          imageBase64 = data.message._data?.body || null;
+        }
+
+
+        if ((data.message.type === 'ptt' || data.message.type === 'audio')) {
+          console.log('URL:', data.message._data.deprecatedMms3Url);
+          console.log('Media Key:', data.message._data.mediaKey);
+          const audioBuffer = await decryptWhatsAppAudio(
+            data.message._data.deprecatedMms3Url,
+            data.message._data.mediaKey
+          );
+
+          const fileName = `audio_${Date.now()}.ogg`;
+          const filePath = path.join(__dirname, fileName);
+
+          fs.writeFileSync(filePath, audioBuffer);
+
+          audioBase64 = audioBuffer.toString("base64");
+
+          console.log("Audio descifrado correctamente");
+
+          // 👉 borrar archivo después de usarlo
+          /*  fs.unlink(filePath, (err) => {
+             if (err) console.error("Error borrando archivo:", err);
+             else console.log("Audio temporal eliminado");
+           }); */
+        }
+
+        // 4. Payload único hacia n8n
+        const payload = {
+          from: remitente,
+          text: data.message.body || null,
+          pushName: data.message.notifyName || 'Cliente',
+          tipo: data.message.type,
+          imagen: imageBase64 || null,
+          audio: audioBase64 || null,
+        };
+
+        console.log('Payload enviado a n8n:', payload);
+
+        // 5. Enviar a n8n
+        await axios.post(n8nurl, payload)
+          .then(response => {
+            console.log('Datos enviados a n8n con éxito');
+            console.log("Mensaje con data de n8n:", response.data.message);
+            // Si n8n devuelve la respuesta de la IA en el cuerpo (Webhook Response), 
+            // acá podrías tomarla para mandarla de vuelta al WhatsApp si fuera necesario.
+          })
+          .catch(error => {
+            console.error('Datos no enviados a n8n:', error.message);
+          });
+
+        // 6. Marcar chat como no leido, luego de recibir mensaje (no está funcionando correctamente, revisar waapi)
+        let enviarA = null
+        if (data.message.from.includes("@lid")) {
+          enviarA = data.message.from;
+        } else { enviarA = data.message.from + "@c.us" }
+
+        const optionsur = {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            authorization: autor
+          },
+          body: JSON.stringify({ chatId: enviarA })
+        };
+
+        await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/mark-chat-unread', optionsur)
+          .then(res => res.json())
+          .then(res => {
+            console.log('Chat marcado como no leído:', res);
+          })
+          .catch(err => {
+            console.error(err)
+            console.log('No se pudo marcar como no leído', err);
+          });
+
+
+
+      } else { // si estamos dentro del horario o no es dia especial, procesar normalmente pero si es mensaje de audio y no es de un contacto en exclusion, respondemos que no escuchamos audios
+        // verificar si es mensaje de audio 
+        if ((data.message.type === 'ptt' || data.message.type === 'audio')) { // si entra mensaje de audio
+          // y no es de un contacto en exclusion, respondemos que no escuchamos audios
+          if (excludedPhones.includes(data.message.from)) { // si es de un contacto en exclusion
+            console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario permitido", data.message.from)
+          } else {
+            console.log("Mensaje de audio para Mi ", data.message.type, "id serial: ", data.message.id._serialized, "destinatario NO permitido", data.message.from)
+
+            // 1. Validaciones mínimas (una sola vez) no procesar el audio
+            if (
+              data.message.from === "5492342513085@c.us" ||
+              data.message.from === "status@broadcast" ||
+              data.message.from.includes("@g.us")
+            ) {
+              console.log("Evento no procesado. Evento: " + event + ", De: " + data.message.from + ", Para: " + data.message.to)
+              return res.sendStatus(200);
+            }
+            // audio recibido
+
+            //            const base64 = data;
+            //            console.log('Media URL:', base64);
+            // fin procesoar audio
+            const params = {
+              chatId: data.message.from,
+              message: "🤖🎙️ Me encantaría escucharte, pero por ahora soy mejor leyendo que oyendo. \n ¿Podrías escribirme tu consulta por aquí? ¡Muchas gracias! ✍️✨",
+              //                replyToMessageId: data.message.id._serialized // objRecibe.serial
+            }
+            const options = {
+              method: 'POST',
+              headers: {
+                accept: 'application/json',
+                'content-type': 'application/json',
+                authorization: autor
+              },
+              body: JSON.stringify(params)
+            };
+            await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-message', options)
+              .then(response => response.json())
+              .then(response => {
+                // console.log(response)
+                console.log('Mensaje de audio respondido');
+              })
+              .catch(err => {
+                console.error(err)
+                console.log('Mensaje NO enviado');
+              });
+          }
+        }
       }
-
-      // procesar audio
-/*       let audioBase64 = null;
-
-      if (data.message.type === 'audio' || data.message.type === 'ptt') {
-        audioBase64 = await descargarAudioWaapi(
-          data.message._data,
-          instanceId,
-          autor
-        );
-      } */
-
-      // Debug info
-      // console.log('Audio base64 length:', audioBase64?.length);
-
-      // 4. Payload único hacia n8n
-      const payload = {
-        from: remitente,
-        text: data.message.body || null,
-        pushName: data.message.pushName || 'Cliente',
-        tipo: data.message.type,
-        imagen: imageBase64,
-        audio: null // audioBase64
-      };
-
-      console.log('Payload enviado a n8n:', payload);
-
-      // 5. Enviar a n8n
-      await axios.post(n8nurl, payload);
 
       return res.sendStatus(200);
 
@@ -554,15 +727,27 @@ try {
     }
   });
 
-  // recibir desde n8n y enviar mensaje
-  app.post('/wapp/recibon8n/', async (req, res) => {
+  // Inicio recibir desde n8n y NO enviar mensaje
+  app.post('/wapp/recibon8ntest', async (req, res) => {
+    const { destinatario, mensaje } = req.body;
+    console.log("Recibo desde n8n para enviar a waapi:", destinatario, mensaje)
+    return res.status(200).json({ message: "Recibido en backend TESTER" });
+  })
+  // Fin recibir desde n8n y NO enviar mensaje
+
+  // Inicio recibir desde n8n y enviar mensaje
+  app.post('/wapp/recibon8n', async (req, res) => {
     const { destinatario, mensaje } = req.body;
     console.log("Recibo desde n8n para enviar a waapi:", destinatario, mensaje)
     const instanceId = idinsta;
     try {
       // console.log(destinatario, mensaje)
+      let enviarA = null
+      if (destinatario.includes("@lid")) {
+        enviarA = destinatario;
+      } else { enviarA = destinatario + "@c.us" }
       const params = {
-        chatId: destinatario + "@c.us",
+        chatId: enviarA, // data.message.from,
         message: mensaje,
         // replyToMessageId: data.message.id._serialized // objRecibe.serial
       }
@@ -578,22 +763,24 @@ try {
       await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/send-message', options)
         .then(response => response.json())
         .then(response => {
-          // console.log(response)
+          console.log(response.data.status)
           console.log('Mensaje respondido por ChatBot');
         })
         .catch(err => {
           console.error(err)
           console.log('Mensaje NO pudo ser enviado');
         });
+
       return res.status(200).json({ message: "Recibido en backend" });
     } catch (error) {
       console.log("Error en recibon8n", error.message);
       return res.status(400).json({ error: error.message });
     }
   })
+  // Fin recibir desde n8n y enviar mensaje
 
   //init scheduler
-  if (environment === "production") { programador_tareas(); }
+  // if (environment === "production") { programador_tareas(); }
 
   app.post('/wapp/send-mail', async (req, res) => {
     const { message, phone, name, email, correo, web } = req.body
@@ -613,10 +800,11 @@ try {
   })
 
   // evento recibido desde waapi
-  app.post('/wapp/receiptNO/', async (req, res) => {
+  // codigo siguiente para rescartar y alternar con el anterior
+  app.post('/wapp/receiptNOSEUSAMAS/', async (req, res) => {
     try {
       console.log("Evento recibido de waapi")
-
+      // leer configuracion para fechas especiales
       function leerConfiguracion() {
         const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
         const fechaEspecial = contenido[0].trim();
