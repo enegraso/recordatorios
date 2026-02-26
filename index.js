@@ -507,7 +507,215 @@ try {
 
   // fin funciones para convertir a audio comun y reproducible, no implementada aún
 
-  app.post('/wapp/receipt', async (req, res) => { // Recibo mensaje de la api waapi
+  const processedMessages = new Set(); // para deduplicar mensajes entrantes, guardo IDs de mensajes procesados recientemente (1 minuto)
+  app.post('/wapp/receipt', async (req, res) => {
+    try {
+      const { event, instanceId, data } = req.body;
+
+      if (!data || !data.message) {
+        return res.sendStatus(200);
+      }
+
+      const msg = data.message;
+
+      // -------------------------------------------------
+      // 🛑 FILTRO GLOBAL (ANTI LOOPS Y EVENTOS BASURA)
+      // -------------------------------------------------
+
+      const ignoredEvents = [
+        "message_ack",
+        "message_revoke",
+        "chat_update",
+        "presence_update"
+      ];
+
+      if (ignoredEvents.includes(event)) {
+        return res.sendStatus(200);
+      }
+
+      // ignorar mensajes enviados por el propio bot
+      if (msg.fromMe === true) {
+        return res.sendStatus(200);
+      }
+
+      // ignorar estados
+      if (msg.from === "status@broadcast") {
+        return res.sendStatus(200);
+      }
+
+      // ignorar grupos
+      if (msg.from.includes("@g.us")) {
+        return res.sendStatus(200);
+      }
+
+      // ignorar eventos de sistema (temporales etc)
+      if (!msg.body && msg.type !== "image" && msg.type !== "audio" && msg.type !== "ptt") {
+        return res.sendStatus(200);
+      }
+
+      // ignorar comandos NB
+      if (msg.body && msg.body.substring(0, 2).toLowerCase() === "nb") {
+        return res.sendStatus(200);
+      }
+
+      // ignorar mensajes del propio número
+      if (msg.from === "5492342513085@c.us") {
+        return res.sendStatus(200);
+      }
+
+      // -------------------------------------------------
+      // 🔥 DEDUPLICACIÓN
+      // -------------------------------------------------
+
+      const messageId = msg?.id?._serialized;
+
+      if (messageId) {
+        if (processedMessages.has(messageId)) {
+          console.log("Mensaje duplicado ignorado:", messageId);
+          return res.sendStatus(200);
+        }
+
+        processedMessages.add(messageId);
+
+        setTimeout(() => {
+          processedMessages.delete(messageId);
+        }, 60000);
+      }
+
+      // -------------------------------------------------
+      // 📅 CONFIGURACIÓN
+      // -------------------------------------------------
+
+      const hoy = dayjs().tz(TZ).format("DD/MM");
+
+      function leerConfiguracion() {
+        const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
+        const fechaEspecial = contenido[0].trim();
+        const mensajeExtra = contenido.slice(2).join("\n").trim();
+        return { fechaEspecial, mensajeExtra };
+      }
+
+      const { fechaEspecial, mensajeExtra } = leerConfiguracion();
+
+      function obtenerNumerosDesdeArchivo(rutaArchivo) {
+        try {
+          const data = fs.readFileSync(rutaArchivo, 'utf8');
+          return data
+            .split('\n')
+            .map(n => n.trim())
+            .filter(n => n.length > 0);
+        } catch (err) {
+          console.error('Error al leer el archivo:', err);
+          return [];
+        }
+      }
+
+      const excludedPhones = obtenerNumerosDesdeArchivo('numeros.txt');
+
+      console.log(
+        "Hoy:", hoy,
+        "Especial:", fechaEspecial,
+        "Horario:", estaDentroDelHorario(),
+        "De:", msg.from,
+        "Nombre:", msg.notifyName
+      );
+
+      // -------------------------------------------------
+      // 🤖 FUERA DE HORARIO → n8n
+      // -------------------------------------------------
+
+      if ((hoy === fechaEspecial || !estaDentroDelHorario())) {
+
+        if (excludedPhones.includes(msg.from)) {
+          return res.sendStatus(200);
+        }
+
+        const remitente = msg.from.replace('@c.us', '');
+
+        let imageBase64 = null;
+        let audioBase64 = null;
+
+        if (msg.type === 'image') {
+          imageBase64 = msg._data?.body || null;
+        }
+
+        if (msg.type === 'ptt' || msg.type === 'audio') {
+
+          const audioBuffer = await decryptWhatsAppAudio(
+            msg._data.deprecatedMms3Url,
+            msg._data.mediaKey
+          );
+
+          audioBase64 = audioBuffer.toString("base64");
+
+          console.log("Audio descifrado correctamente");
+        }
+
+        const payload = {
+          from: remitente,
+          text: msg.body || null,
+          pushName: msg.notifyName || 'Cliente',
+          tipo: msg.type,
+          imagen: imageBase64,
+          audio: audioBase64
+        };
+
+        console.log('Payload enviado a n8n:', payload);
+
+        try {
+          const response = await axios.post(n8nurl, payload);
+          console.log("Respuesta n8n:", response.data);
+        } catch (error) {
+          console.error('Error enviando a n8n:', error.message);
+        }
+
+      }
+      // -------------------------------------------------
+      // 🎙 AUDIO EN HORARIO → RESPUESTA AUTOMÁTICA
+      // -------------------------------------------------
+      else {
+
+        if (msg.type === 'ptt' || msg.type === 'audio') {
+
+          if (excludedPhones.includes(msg.from)) {
+            return res.sendStatus(200);
+          }
+
+          const params = {
+            chatId: msg.from,
+            message: "🤖🎙️ Me encantaría escucharte, pero por ahora soy mejor leyendo que oyendo.\n¿Podrías escribirme tu consulta por aquí? ¡Muchas gracias! ✍️"
+          };
+
+          const options = {
+            method: 'POST',
+            headers: {
+              accept: 'application/json',
+              'content-type': 'application/json',
+              authorization: autor
+            },
+            body: JSON.stringify(params)
+          };
+
+          try {
+            await fetch(`https://waapi.app/api/v1/instances/${instanceId}/client/action/send-message`, options);
+            console.log("Respuesta enviada para audio");
+          } catch (err) {
+            console.error("Error enviando respuesta audio", err);
+          }
+
+        }
+
+      }
+
+      return res.sendStatus(200);
+
+    } catch (error) {
+      console.error('Error en /wapp/receipt:', error.message);
+      return res.sendStatus(200);
+    }
+  });
+
+  app.post('/wapp/receiptNO2', async (req, res) => { // Recibo mensaje de la api waapi
     try {
       const { event, instanceId, data } = req.body;
 
@@ -528,6 +736,7 @@ try {
           processedMessages.delete(messageId);
         }, 60000); // 1 minuto
       }
+
 
       // 👇 DESPUÉS DE ESTO VA TODO TU CÓDIGO ACTUAL
 
@@ -560,7 +769,8 @@ try {
       if (
         data.message.from === "5492342513085@c.us" ||
         data.message.from === "status@broadcast" ||
-        data.message.from.includes("@g.us")
+        data.message.from.includes("@g.us") ||
+        (data.message.body && data.message.body.substring(0, 2).toLowerCase() === "nb") // si el mensa contine nb al inicio, no desea respuesta de bot, es para otro proceso, lo ignoro
       ) {
         console.log("Evento no procesado. Evento: " + event + ", De: " + data.message.from + ", Para: " + data.message.to)
         return res.sendStatus(200);
@@ -640,34 +850,6 @@ try {
             console.error('Datos no enviados a n8n:', error.message);
           });
 
-        // 6. Marcar chat como no leido, luego de recibir mensaje (no está funcionando correctamente, revisar waapi)
-        let enviarA = null
-        if (data.message.from.includes("@lid")) {
-          enviarA = data.message.from;
-        } else { enviarA = data.message.from + "@c.us" }
-
-        const optionsur = {
-          method: 'POST',
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json',
-            authorization: autor
-          },
-          body: JSON.stringify({ chatId: enviarA })
-        };
-
-        await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/mark-chat-unread', optionsur)
-          .then(res => res.json())
-          .then(res => {
-            console.log('Chat marcado como no leído:', res);
-          })
-          .catch(err => {
-            console.error(err)
-            console.log('No se pudo marcar como no leído', err);
-          });
-
-
-
       } else { // si estamos dentro del horario o no es dia especial, procesar normalmente pero si es mensaje de audio y no es de un contacto en exclusion, respondemos que no escuchamos audios
         // verificar si es mensaje de audio 
         if ((data.message.type === 'ptt' || data.message.type === 'audio')) { // si entra mensaje de audio
@@ -737,7 +919,7 @@ try {
 
   // Inicio recibir desde n8n y enviar mensaje
   app.post('/wapp/recibon8n', async (req, res) => {
-    const { destinatario, mensaje } = req.body;
+    const { destinatario, mensaje, aviso } = req.body;
     console.log("Recibo desde n8n para enviar a waapi:", destinatario, mensaje)
     const instanceId = idinsta;
     try {
@@ -770,6 +952,32 @@ try {
           console.error(err)
           console.log('Mensaje NO pudo ser enviado');
         });
+
+      // 6. Marcar chat como no leido, luego de contestar 
+      if (aviso && aviso === "avisado") {
+        console.log("No marco como no leído porque ya se avisó")
+        return res.status(200).json({ message: "Recibido en backend, no marco como no leído porque ya se avisó" });
+      } else {
+        const optionsur = {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            authorization: autor
+          },
+          body: JSON.stringify({ chatId: enviarA })
+        };
+
+        await fetch('https://waapi.app/api/v1/instances/' + instanceId + '/client/action/mark-chat-unread', optionsur)
+          .then(res => res.json())
+          .then(res => {
+            console.log('Chat marcado como no leído:', res);
+          })
+          .catch(err => {
+            console.error(err)
+            console.log('No se pudo marcar como no leído', err);
+          });
+      }
 
       return res.status(200).json({ message: "Recibido en backend" });
     } catch (error) {
