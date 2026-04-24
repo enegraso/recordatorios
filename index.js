@@ -12,6 +12,7 @@ const QRcode = require('qrcode');
 const axios = require('axios');
 const n8nurl = process.env.N8NURL
 
+
 const crypto = require("crypto");
 
 const sheets = require('./googleClient.js');
@@ -39,7 +40,7 @@ dayjs.extend(timezone);
 dayjs.extend(customParseFormat);
 dayjs.extend(isBetween);
 
-
+// const cors = require('cors');
 const app = express();
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*'); // update to match the domain you will make the request from
