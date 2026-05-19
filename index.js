@@ -1349,7 +1349,7 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         return res.status(200).send("Clave de autorización inválida");
       }
       const msg = data?.message;
-      console.log("Evento recibido:", { event, instanceId, msg: msg ? { from: msg.from, type: msg.type, body: msg.body } : null });
+
 
       if (!msg || event !== "message") return res.sendStatus(200);
 
@@ -1388,6 +1388,8 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         msg.from.includes("@g.us")
       ) return res.sendStatus(200);
 
+      console.log("Evento recibido:", { event, instanceId, msg: msg ? { from: msg.from, type: msg.type, body: msg.body } : null });
+      
       // =========================
       // SILENCIO BOT (nb)
       // =========================
@@ -1468,8 +1470,11 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
       const pideCredenciales =
         texto.includes("usuario") ||
         texto.includes("clave") ||
-        texto.includes("wifi") ||
-        texto.includes("internet");
+        texto.includes("correo") ||
+        texto.includes("contraseña") ||
+        texto.includes("credencial") ||
+        texto.includes("mi cuenta") ||
+        texto.includes("password");
 
       // =========================
       // 🔴 FUERA DE HORARIO
