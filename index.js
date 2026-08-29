@@ -516,713 +516,42 @@ try {
     return decrypted; // buffer .ogg real
   }
 
+  async function decryptWhatsAppDocument(mmsUrl, mediaKeyBase64) {
+    const response = await axios.get(mmsUrl, {
+      responseType: "arraybuffer",
+    });
+
+    const encrypted = Buffer.from(new Uint8Array(response.data));
+    const file = encrypted.slice(0, -10);
+    const mac = encrypted.slice(-10);
+
+    const mediaKey = Buffer.from(mediaKeyBase64, "base64");
+    const expandedKey = hkdf(mediaKey, 112, "WhatsApp Document Keys");
+
+    const iv = expandedKey.slice(0, 16);
+    const cipherKey = expandedKey.slice(16, 48);
+    const macKey = expandedKey.slice(48, 80);
+
+    const hmac = crypto.createHmac("sha256", macKey);
+    hmac.update(Buffer.concat([iv, file]));
+    const computedMac = hmac.digest().slice(0, 10);
+
+    if (!computedMac.equals(mac)) {
+      throw new Error("MAC inválido (documento)");
+    }
+
+    const decipher = crypto.createDecipheriv("aes-256-cbc", cipherKey, iv);
+    const decrypted = Buffer.concat([
+      decipher.update(file),
+      decipher.final(),
+    ]);
+
+    return decrypted;
+  }
+
   // fin funciones para convertir a audio comun y reproducible, no implementada aún
 
   const processedMessages = new Set(); // para deduplicar mensajes entrantes, guardo IDs de mensajes procesados recientemente (1 minuto)
-
-  const mutedUsersNO2 = new Map(); // Map para almacenar usuarios silenciados temporalmente (clave: número, valor: timestamp de expiración)
-
-  // Endpoint /wapp/receipt con mejoras:
-  // - Envío automático a n8n si pide usuario/clave dentro de horario
-  // - Uso de config.txt para fechas especiales y mensaje dinámico
-  // - Mantiene lógica existente (mute, deduplicación, audios, etc.)
-
-  // Endpoint /wapp/receipt con mejoras:
-  // - Envío automático a n8n si pide usuario/clave dentro de horario
-  // - Uso de config.txt para fechas especiales y mensaje dinámico
-  // - Mantiene lógica existente (mute, deduplicación, audios, etc.)
-
-  // Registro del último mensaje fuera de horario por usuario
-
-  // Endpoint /wapp/receipt con mejoras:
-  // - Envío automático a n8n si pide usuario/clave dentro de horario
-  // - Uso de config.txt para fechas especiales y mensaje dinámico
-  // - Mantiene lógica existente (mute, deduplicación, audios, etc.)
-
-  // Registro del último mensaje fuera de horario por usuario
-  const ultimoMensajeFueraHorarioNO2 = new Map();
-
-  app.post('/wapp/receiptNO2', async (req, res) => {
-    try {
-      const { event, instanceId, data } = req.body;
-
-      if (!event || !instanceId || !data) {
-        console.error('Error en /wapp/receipt: falta información', new Date().toLocaleString());
-        return res.sendStatus(200);
-      }
-
-      const msg = data?.message;
-
-      if (!msg) {
-        console.error('Error en /wapp/receipt: no se encontró el mensaje', new Date().toLocaleString());
-        return res.sendStatus(200);
-      }
-
-      const chatId = msg.from;
-      const messageId = msg?.id?._serialized;
-
-      // =========================
-      // DEDUPLICACIÓN
-      // =========================
-
-      if (messageId) {
-        if (processedMessages.has(messageId)) {
-          console.log("Mensaje duplicado ignorado:", messageId);
-          return res.sendStatus(200);
-        }
-
-        processedMessages.add(messageId);
-
-        setTimeout(() => {
-          processedMessages.delete(messageId);
-        }, 60000);
-      }
-
-      // =========================
-      // MODO SILENCIO DEL BOT
-      // =========================
-
-      if (mutedUsers.has(chatId)) {
-        const expire = mutedUsers.get(chatId);
-
-        if (Date.now() < expire) {
-          console.log("Bot silenciado para:", chatId);
-          return res.sendStatus(200);
-        } else {
-          mutedUsers.delete(chatId);
-        }
-      }
-
-      if (msg.body && msg.body.toLowerCase().startsWith("nb")) {
-
-        const partes = msg.body.split(" ");
-        const minutos = parseInt(partes[1]) || 60;
-
-        mutedUsers.set(chatId, Date.now() + minutos * 60000);
-
-        console.log(`Bot silenciado ${minutos} minutos para`, chatId);
-
-        return res.sendStatus(200);
-      }
-
-      if (msg.body && msg.body.toLowerCase() === "bot") {
-        mutedUsers.delete(chatId);
-        console.log("Bot reactivado para", chatId);
-      }
-
-      // =========================
-      // FILTROS BÁSICOS
-      // =========================
-
-      if (
-        msg.from === "5492342513085@c.us" ||
-        msg.from === "status@broadcast" ||
-        msg.from.includes("@g.us")
-      ) {
-        return res.sendStatus(200);
-      }
-
-      if (event !== "message") {
-        return res.sendStatus(200);
-      }
-
-      if (!msg.body && msg.type !== "image" && msg.type !== "ptt" && msg.type !== "audio") {
-        return res.sendStatus(200);
-      }
-
-      // =========================
-      // CONFIGURACIÓN
-      // =========================
-
-      const hoy = dayjs().tz(TZ).format("DD/MM");
-
-      function leerConfiguracion() {
-        const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
-
-        const fechaEspecial = contenido[0].trim();
-        const mensajeExtra = contenido.slice(2).join("\n").trim();
-
-        return { fechaEspecial, mensajeExtra };
-      }
-
-      const { fechaEspecial, mensajeExtra } = leerConfiguracion();
-
-      function obtenerNumerosDesdeArchivo(rutaArchivo) {
-        try {
-          const data = fs.readFileSync(rutaArchivo, 'utf8');
-          return data
-            .split('\n')
-            .map(n => n.trim())
-            .filter(n => n.length > 0);
-        } catch (err) {
-          console.error('Error al leer el archivo:', err);
-          return [];
-        }
-      }
-
-      const excludedPhones = obtenerNumerosDesdeArchivo('numeros.txt');
-
-      // =========================
-      // FUNCIÓN HORARIO (dos turnos: mañana y tarde)
-      // =========================
-
-      function estaDentroDelHorario() {
-
-        const ahora = dayjs().tz(TZ);
-
-        const horaActual = ahora.format("HH:mm");
-
-        // Turno mañana
-        const inicioManana = "09:30";
-        const finManana = "13:00";
-
-        // Turno tarde
-        const inicioTarde = "16:30";
-        const finTarde = "20:00";
-
-        const dentroManana = horaActual >= inicioManana && horaActual <= finManana;
-        const dentroTarde = horaActual >= inicioTarde && horaActual <= finTarde;
-
-        return dentroManana || dentroTarde;
-
-      }
-
-      // =========================
-      // HORARIO
-      // =========================
-
-      const fueraDeHorario =
-        hoy === fechaEspecial ||
-        !estaDentroDelHorario();
-
-      const dentroDeHorario = !fueraDeHorario;
-
-      // =========================
-      // MENSAJE FUERA DE HORARIO CADA 4 HORAS
-      // (solo si el usuario vuelve a escribir)
-      // =========================
-
-      if (fueraDeHorario) {
-
-        const ahora = Date.now();
-        const ultimoEnvio = ultimoMensajeFueraHorario.get(msg.from);
-        const cuatroHoras = 4 * 60 * 60 * 1000;
-
-        if (!ultimoEnvio || (ahora - ultimoEnvio) >= cuatroHoras) {
-
-          ultimoMensajeFueraHorario.set(msg.from, ahora);
-
-          const mensaje = `
-🗓️ Horario de Atención:
-Lunes a viernes:
-🕤 9,30 a 🕐 13,00
-🕟 16,30 a 🕗 20,00
-🚫 *Feriados, Sábados y domingos* cerrado
-
-${mensajeExtra}
-
-🤖 intentará ayudarte.
-Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
-`;
-
-          const params = {
-            chatId: msg.from,
-            message: mensaje
-          };
-
-          const options = {
-            method: 'POST',
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json',
-              authorization: autor
-            },
-            body: JSON.stringify(params)
-          };
-
-          await fetch(
-            `https://waapi.app/api/v1/instances/${instanceId}/client/action/send-message`,
-            options
-          );
-
-          console.log("Mensaje fuera de horario enviado a:", msg.from);
-
-        } else {
-
-          console.log("Aún no pasaron 4 horas desde el último mensaje a", msg.from);
-
-        }
-
-      } else {
-
-        // si vuelve el horario, limpiamos el registro
-        if (ultimoMensajeFueraHorario.size > 0) {
-          ultimoMensajeFueraHorario.clear();
-          console.log("Horario abierto: registros de fuera de horario limpiados");
-        }
-
-      }
-
-      // =========================
-      // DETECCIÓN PEDIDO DE CLAVES
-      // =========================
-
-      const texto = (msg.body || "").toLowerCase();
-
-      const pideCredenciales =
-        texto.includes("usuario") ||
-        texto.includes("clave") ||
-        texto.includes("wifi") ||
-        texto.includes("internet");
-
-      if (dentroDeHorario && pideCredenciales) {
-
-        if (excludedPhones.includes(msg.from)) {
-          return res.sendStatus(200);
-        }
-
-        const remitente = msg.from.replace('@c.us', '');
-
-        const payload = {
-          from: remitente,
-          text: msg.body,
-          pushName: msg.notifyName || 'Cliente',
-          tipo: msg.type,
-          accion: "credenciales"
-        };
-
-        console.log('Solicitud de credenciales enviada a n8n');
-
-        await axios.post(n8nurl, payload)
-          .catch(error => {
-            console.error('Error enviando a n8n:', error.message);
-          });
-
-        return res.sendStatus(200);
-      }
-
-      // =========================
-      // ENVÍO A N8N POR AUDIO O FUERA DE HORARIO
-      // =========================
-
-      const esAudio =
-        msg.type === 'ptt' ||
-        msg.type === 'audio';
-
-      if ((esAudio || fueraDeHorario) && msg.from !== '5492342513085@c.us') {
-
-        if (excludedPhones.includes(msg.from)) {
-          return res.sendStatus(200);
-        }
-
-        const remitente = msg.from.replace('@c.us', '');
-
-        let imageBase64 = null;
-        let audioBase64 = null;
-
-        if (msg.type === 'image') {
-          imageBase64 = msg._data?.body || null;
-        }
-
-        if (esAudio) {
-
-          const audioBuffer = await decryptWhatsAppAudio(
-            msg._data.deprecatedMms3Url,
-            msg._data.mediaKey
-          );
-
-          audioBase64 = audioBuffer.toString("base64");
-        }
-
-        const payload = {
-          from: remitente,
-          text: msg.body || null,
-          pushName: msg.notifyName || 'Cliente',
-          tipo: msg.type,
-          imagen: imageBase64 || null,
-          audio: audioBase64 || null,
-        };
-
-        console.log('Payload enviado a n8n:', payload);
-
-        await axios.post(n8nurl, payload)
-          .catch(error => {
-            console.error('Error enviando a n8n:', error.message);
-          });
-
-      } else {
-
-        // =========================
-        // RESPUESTA A AUDIOS
-        // =========================
-
-        if (esAudio) {
-
-          if (!excludedPhones.includes(msg.from)) {
-
-            const params = {
-              chatId: msg.from,
-              message: "🤖🎙️ Me encantaría escucharte, pero por ahora soy mejor leyendo que oyendo.\n¿Podrías escribirme tu consulta? ✍️"
-            };
-
-            const options = {
-              method: 'POST',
-              headers: {
-                accept: 'application/json',
-                'content-type': 'application/json',
-                authorization: autor
-              },
-              body: JSON.stringify(params)
-            };
-
-            await fetch(
-              `https://waapi.app/api/v1/instances/${instanceId}/client/action/send-message`,
-              options
-            );
-
-            console.log("Audio respondido");
-          }
-        }
-      }
-
-      return res.sendStatus(200);
-
-    } catch (error) {
-      console.error('Error en /wapp/receipt:', error.message, new Date().toLocaleString());
-      return res.sendStatus(200);
-    }
-  });
-
-  // Nota: El control de las 4 horas ahora se realiza dentro del endpoint
-  // únicamente cuando el usuario vuelve a escribir fuera de horario.
-
-  const ultimoMensajeFueraHorarioNO = new Map();
-
-  app.post('/wapp/receiptNO', async (req, res) => {
-    try {
-      const { event, instanceId, data } = req.body;
-
-      if (!event || !instanceId || !data) {
-        console.error('Error en /wapp/receipt: falta información', new Date().toLocaleString());
-        return res.sendStatus(200);
-      }
-
-      const msg = data?.message;
-
-      if (!msg) {
-        console.error('Error en /wapp/receipt: no se encontró el mensaje', new Date().toLocaleString());
-        return res.sendStatus(200);
-      }
-
-      const chatId = msg.from;
-      const messageId = msg?.id?._serialized;
-
-      // =========================
-      // DEDUPLICACIÓN
-      // =========================
-
-      if (messageId) {
-        if (processedMessages.has(messageId)) {
-          console.log("Mensaje duplicado ignorado:", messageId);
-          return res.sendStatus(200);
-        }
-
-        processedMessages.add(messageId);
-
-        setTimeout(() => {
-          processedMessages.delete(messageId);
-        }, 60000);
-      }
-
-      // =========================
-      // MODO SILENCIO DEL BOT
-      // =========================
-
-      if (mutedUsers.has(chatId)) {
-        const expire = mutedUsers.get(chatId);
-
-        if (Date.now() < expire) {
-          console.log("Bot silenciado para:", chatId);
-          return res.sendStatus(200);
-        } else {
-          mutedUsers.delete(chatId);
-        }
-      }
-
-      if (msg.body && msg.body.toLowerCase().startsWith("nb")) {
-
-        const partes = msg.body.split(" ");
-        const minutos = parseInt(partes[1]) || 60;
-
-        mutedUsers.set(chatId, Date.now() + minutos * 60000);
-
-        console.log(`Bot silenciado ${minutos} minutos para`, chatId);
-
-        return res.sendStatus(200);
-      }
-
-      if (msg.body && msg.body.toLowerCase() === "bot") {
-        mutedUsers.delete(chatId);
-        console.log("Bot reactivado para", chatId);
-      }
-
-      // =========================
-      // FILTROS BÁSICOS
-      // =========================
-
-      if (
-        msg.from === "5492342513085@c.us" ||
-        msg.from === "status@broadcast" ||
-        msg.from.includes("@g.us")
-      ) {
-        return res.sendStatus(200);
-      }
-
-      if (event !== "message") {
-        return res.sendStatus(200);
-      }
-
-      if (!msg.body && msg.type !== "image" && msg.type !== "ptt" && msg.type !== "audio") {
-        return res.sendStatus(200);
-      }
-
-      // =========================
-      // CONFIGURACIÓN
-      // =========================
-
-      const hoy = dayjs().tz(TZ).format("DD/MM");
-
-      function leerConfiguracion() {
-        const contenido = fs.readFileSync("config.txt", "utf-8").split("\n");
-
-        const fechaEspecial = contenido[0].trim();
-        const mensajeExtra = contenido.slice(2).join("\n").trim();
-
-        return { fechaEspecial, mensajeExtra };
-      }
-
-      const { fechaEspecial, mensajeExtra } = leerConfiguracion();
-
-      function obtenerNumerosDesdeArchivo(rutaArchivo) {
-        try {
-          const data = fs.readFileSync(rutaArchivo, 'utf8');
-          return data
-            .split('\n')
-            .map(n => n.trim())
-            .filter(n => n.length > 0);
-        } catch (err) {
-          console.error('Error al leer el archivo:', err);
-          return [];
-        }
-      }
-
-      const excludedPhones = obtenerNumerosDesdeArchivo('numeros.txt');
-
-      // =========================
-      // HORARIO
-      // =========================
-
-      const fueraDeHorario =
-        hoy === fechaEspecial ||
-        !estaDentroDelHorario();
-
-      const dentroDeHorario = !fueraDeHorario;
-
-      // =========================
-      // MENSAJE FUERA DE HORARIO CADA 4 HORAS
-      // (solo si el usuario vuelve a escribir)
-      // =========================
-
-      if (fueraDeHorario) {
-
-        const ahora = Date.now();
-        const ultimoEnvio = ultimoMensajeFueraHorario.get(msg.from);
-        const cuatroHoras = 4 * 60 * 60 * 1000;
-
-        if (!ultimoEnvio || (ahora - ultimoEnvio) >= cuatroHoras) {
-
-          ultimoMensajeFueraHorario.set(msg.from, ahora);
-
-          const mensaje = `
-🗓️ Horario de Atención:
-Lunes a viernes:
-🕤 9,30 a 🕐 13,00
-🕟 16,30 a 🕗 20,00
-🚫 Feriados, Sábados y domingos cerrado
-
-${mensajeExtra}
-
-🤖 intentará ayudarte.
-Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
-`;
-
-          const params = {
-            chatId: msg.from,
-            message: mensaje
-          };
-
-          const options = {
-            method: 'POST',
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json',
-              authorization: autor
-            },
-            body: JSON.stringify(params)
-          };
-
-          await fetch(
-            `https://waapi.app/api/v1/instances/${instanceId}/client/action/send-message`,
-            options
-          );
-
-          console.log("Mensaje fuera de horario enviado a:", msg.from);
-
-        } else {
-
-          console.log("Aún no pasaron 4 horas desde el último mensaje a", msg.from);
-
-        }
-
-      } else {
-
-        // si vuelve el horario, limpiamos el registro
-        if (ultimoMensajeFueraHorario.size > 0) {
-          ultimoMensajeFueraHorario.clear();
-          console.log("Horario abierto: registros de fuera de horario limpiados");
-        }
-
-      }
-
-      // =========================
-      // DETECCIÓN PEDIDO DE CLAVES
-      // =========================
-
-      const texto = (msg.body || "").toLowerCase();
-
-      const pideCredenciales =
-        texto.includes("usuario") ||
-        texto.includes("clave") ||
-        texto.includes("contraseña") ||
-        texto.includes("credencial");
-
-      if (dentroDeHorario && pideCredenciales) {
-
-        if (excludedPhones.includes(msg.from)) {
-          return res.sendStatus(200);
-        }
-
-        const remitente = msg.from.replace('@c.us', '');
-
-        const payload = {
-          from: remitente,
-          text: msg.body,
-          pushName: msg.notifyName || 'Cliente',
-          tipo: msg.type,
-          accion: "credenciales"
-        };
-
-        console.log('Solicitud de credenciales enviada a n8n');
-
-        await axios.post(n8nurl, payload)
-          .catch(error => {
-            console.error('Error enviando a n8n:', error.message);
-          });
-
-        return res.sendStatus(200);
-      }
-
-      // =========================
-      // ENVÍO A N8N POR AUDIO O FUERA DE HORARIO
-      // =========================
-
-      const esAudio =
-        msg.type === 'ptt' ||
-        msg.type === 'audio';
-
-      if ((esAudio || fueraDeHorario) && msg.from !== '5492342513085@c.us') {
-
-        if (excludedPhones.includes(msg.from)) {
-          return res.sendStatus(200);
-        }
-
-        const remitente = msg.from.replace('@c.us', '');
-
-        let imageBase64 = null;
-        let audioBase64 = null;
-
-        if (msg.type === 'image') {
-          imageBase64 = msg._data?.body || null;
-        }
-
-        if (esAudio) {
-
-          const audioBuffer = await decryptWhatsAppAudio(
-            msg._data.deprecatedMms3Url,
-            msg._data.mediaKey
-          );
-
-          audioBase64 = audioBuffer.toString("base64");
-        }
-
-        const payload = {
-          from: remitente,
-          text: msg.body || null,
-          pushName: msg.notifyName || 'Cliente',
-          tipo: msg.type,
-          imagen: imageBase64 || null,
-          audio: audioBase64 || null,
-        };
-
-        console.log('Payload enviado a n8n:', payload);
-
-        await axios.post(n8nurl, payload)
-          .catch(error => {
-            console.error('Error enviando a n8n:', error.message);
-          });
-
-      } else {
-
-        // =========================
-        // RESPUESTA A AUDIOS
-        // =========================
-
-        if (esAudio) {
-
-          if (!excludedPhones.includes(msg.from)) {
-
-            const params = {
-              chatId: msg.from,
-              message: "🤖🎙️ Me encantaría escucharte, pero por ahora soy mejor leyendo que oyendo.\n¿Podrías escribirme tu consulta? ✍️"
-            };
-
-            const options = {
-              method: 'POST',
-              headers: {
-                accept: 'application/json',
-                'content-type': 'application/json',
-                authorization: autor
-              },
-              body: JSON.stringify(params)
-            };
-
-            await fetch(
-              `https://waapi.app/api/v1/instances/${instanceId}/client/action/send-message`,
-              options
-            );
-
-            console.log("Audio respondido");
-          }
-        }
-      }
-
-      return res.sendStatus(200);
-
-    } catch (error) {
-      console.error('Error en /wapp/receipt:', error.message, new Date().toLocaleString());
-      return res.sendStatus(200);
-    }
-  });
 
   async function resolverNumero(chatId, instanceId) {
 
@@ -1259,14 +588,15 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         console.log("Respuesta waapi lid:", data);
 
         // 👇 AJUSTAR SEGÚN RESPUESTA REAL
-        const numero = data?.id?.user || data?.id?._serialized || null;
+        // const numero = data?.id?.user || data?.id?._serialized || null;
+        const numero = data?.data?.data?.id?.user || data?.data?.data?.id?._serialized || null;
         console.log("Numero resuelto:",
           {
             chatId,
             numero,
-            datauser: data?.id?.user,
-            dataserial: data?.id?._serialized,
-            datanumber: data?.number
+            datauser: data?.data?.data?.id?.user,
+            dataserial: data?.data?.data?.id?._serialized,
+            datanumber: data?.data?.data?.number
           });
         if (!numero) return null;
 
@@ -1308,7 +638,7 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         spreadsheetId,
         ranges: [
           `${sheetName}!O4:O`, // contacton8n
-          `${sheetName}!F4:F`, // estado (f/r)
+          `${sheetName}!F4:F`, // estado (fa/ot/lt/ft)
         ],
       });
 
@@ -1323,7 +653,7 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         const estado = String(estados[i] || "").trim().toLowerCase();
 
         if (contacto === numeroNormalizado) {
-          return ["f", "r"].includes(estado);
+          return ["fa", "ot", "lt", "ft", "ftg","ltg", "otg","fag", "fai"].includes(estado);
         }
       }
 
@@ -1389,7 +719,84 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
       ) return res.sendStatus(200);
 
       console.log("Evento recibido:", { event, instanceId, msg: msg ? { from: msg.from, type: msg.type, body: msg.body } : null });
-      
+
+      // =========================
+      // TIPOS PERMITIDOS
+      // =========================
+
+      const tiposPermitidos = [
+        'chat',
+        'image',
+        'audio',
+        'ptt',
+        'document'
+      ];
+
+      if (!tiposPermitidos.includes(msg.type)) {
+
+        console.log("Tipo ignorado:", {
+          tipo: msg.type,
+          from: msg.from,
+          body: msg.body
+        });
+
+        return res.sendStatus(200);
+      }
+
+      // =========================
+      // DETECCIÓN RÁPIDA
+      // =========================
+
+      const esAudio =
+        msg.type === 'ptt' ||
+        msg.type === 'audio';
+
+      const esImagen =
+        msg.type === 'image';
+
+      const esDocumento =
+        msg.type === 'document';
+
+      // =========================
+      // LOG DOCUMENTO (debug)
+      // =========================
+
+      if (esDocumento) {
+        console.log("=== DOCUMENTO RECIBIDO ===", JSON.stringify({
+          from: msg.from,
+          type: msg.type,
+          fileName: msg.fileName,
+          body: msg.body,
+          mimetype: msg.mimetype,
+          _data: {
+            deprecatedMms3Url: msg._data?.deprecatedMms3Url,
+            mediaKey: msg._data?.mediaKey ? "[PRESENTE]" : "[AUSENTE]",
+            fileLength: msg._data?.fileLength,
+            fileName: msg._data?.fileName,
+            mimetype: msg._data?.mimetype,
+            ObjectKeys: Object.keys(msg._data || {})
+          }
+        }, null, 2));
+      }
+
+      // =========================
+      // VALIDAR CONTENIDO ÚTIL
+      // =========================
+
+      const tieneTexto =
+        typeof msg.body === 'string' &&
+        msg.body.trim().length > 0;
+
+      if (!tieneTexto && !esAudio && !esImagen && !esDocumento) {
+
+        console.log("Mensaje ignorado sin contenido útil:", {
+          tipo: msg.type,
+          from: msg.from
+        });
+
+        return res.sendStatus(200);
+      }
+
       // =========================
       // SILENCIO BOT (nb)
       // =========================
@@ -1456,7 +863,9 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         hoy === fechaEspecial ||
         !estaDentroDelHorario();
 
-      // =========================
+      const estado = fueraDeHorario ? "cerrado" : "abierto";
+
+/*       // =========================
       // DETECCIONES
       // =========================
 
@@ -1465,7 +874,7 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
         msg.type === 'audio';
 
       const esImagen =
-        msg.type === 'image';
+        msg.type === 'image'; */
 
       const pideCredenciales =
         texto.includes("usuario") ||
@@ -1502,14 +911,7 @@ Antepone las iniciales nb a tu mensaje, para evitarlo unos momentos.
           }, color = "yellow");
 
 
-          let mensaje = `
-🗓️ Horario de Atención:
-Lunes a viernes:
-🕤 9,30 a 🕐 13,00
-🕟 16,30 a 🕗 20,00
-🚫 Feriados, Sábados y domingos *CERRADO*
-*Anuncios*: https://bit.ly/avisarte 👈 (presionar el enlace)
-`;
+          let mensaje = `Hola! 👋 Soy *BOT-In*, tu asistente virtual.\n\n`;
 
           if (tieneCuenta) {
             mensaje += `
@@ -1526,9 +928,12 @@ ${linea5}
           }
 
           mensaje += `
-🤖 intentará ayudarte.
-Antepone las iniciales nb a tu mensaje para evitarlo unos momentos.
-`;
+😞 *Ahora está CERRADO*
+‼️ Horario de Atención:
+🗓️  *Lunes a viernes:*
+🕤 *9,30* a 🕐 *13,00*
+🕟 *16,30* a 🕗 *20,00*
+🚫 Feriados, Sábados y domingos *CERRADO*`;
 
           await fetch(
             `https://waapi.app/api/v1/instances/${instanceId}/client/action/send-message`,
@@ -1570,6 +975,7 @@ Antepone las iniciales nb a tu mensaje para evitarlo unos momentos.
 
         let audioBase64 = null;
         let imageBase64 = null;
+        let pdfBase64 = null;
 
         if (esAudio) {
           const audioBuffer = await decryptWhatsAppAudio(
@@ -1582,17 +988,34 @@ Antepone las iniciales nb a tu mensaje para evitarlo unos momentos.
         if (esImagen) {
           imageBase64 = msg._data?.body || null;
         }
-        const payload = {
+
+        if (esDocumento) {
+          try {
+            const docBuffer = await decryptWhatsAppDocument(
+              msg._data.deprecatedMms3Url,
+              msg._data.mediaKey
+            );
+            pdfBase64 = docBuffer.toString("base64");
+            console.log("PDF descifrado OK, tamaño:", pdfBase64.length);
+          } catch (e) {
+            console.error("Error descifrando documento:", e.message);
+          }
+        }
+
+        const payloadcerrado = {
           from: remitente,
           text: msg.body || null,
           pushName: msg.notifyName || 'Cliente',
           tipo: msg.type,
           imagen: imageBase64,
-          audio: audioBase64
+          audio: audioBase64,
+          documento: pdfBase64,
+          fileName: esDocumento ? (msg.body || null) : (msg.fileName || msg._data?.fileName || null),
+          estado
         }
-        await axios.post(n8nurl, payload).catch(e => console.error("Error n8n:", e.message));
+        await axios.post(n8nurl, payloadcerrado).catch(e => console.error("Error n8n:", e.message));
 
-        console.log("Enviado a n8n (cerrado):", remitente);
+        console.log("Enviado a n8n (horario cerrado):", payloadcerrado);
 
         return res.sendStatus(200);
       }
@@ -1601,12 +1024,22 @@ Antepone las iniciales nb a tu mensaje para evitarlo unos momentos.
       // 🟢 DENTRO DE HORARIO
       // =========================
 
-      if (esAudio || esImagen || pideCredenciales) {
+      if (esAudio || esImagen || esDocumento || pideCredenciales) {
 
-        const remitente = chatId.replace('@c.us', '');
+        const remitenteBase = String(await resolverNumero(msg.from, instanceId)).replace(/\D/g, '');
+
+        let remitente = remitenteBase;
+
+        // número argentino local (10 dígitos)
+        if (/^\d{10}$/.test(remitenteBase)) {
+          remitente = `549${remitenteBase}`;
+        }
+
+        // const remitente = chatId.replace('@c.us', '');
 
         let audioBase64 = null;
         let imageBase64 = null;
+        let pdfBase64 = null;
 
         if (esAudio) {
           const audioBuffer = await decryptWhatsAppAudio(
@@ -1620,16 +1053,33 @@ Antepone las iniciales nb a tu mensaje para evitarlo unos momentos.
           imageBase64 = msg._data?.body || null;
         }
 
-        await axios.post(n8nurl, {
+        if (esDocumento) {
+          try {
+            const docBuffer = await decryptWhatsAppDocument(
+              msg._data.deprecatedMms3Url,
+              msg._data.mediaKey
+            );
+            pdfBase64 = docBuffer.toString("base64");
+            console.log("PDF descifrado OK, tamaño:", pdfBase64.length);
+          } catch (e) {
+            console.error("Error descifrando documento:", e.message);
+          }
+        }
+
+        const payloadabierto = {
           from: remitente,
           text: msg.body || null,
           pushName: msg.notifyName || 'Cliente',
           tipo: msg.type,
           imagen: imageBase64,
-          audio: audioBase64
-        }).catch(e => console.error("Error n8n:", e.message));
+          audio: audioBase64,
+          documento: pdfBase64,
+          fileName: esDocumento ? (msg.body || null) : (msg.fileName || msg._data?.fileName || null),
+          estado
+        }
+        await axios.post(n8nurl, payloadabierto).catch(e => console.error("Error n8n:", e.message));
 
-        console.log("Enviado a n8n (abierto):", remitente);
+        console.log("Enviado a n8n (horario abierto):", payloadabierto);
       }
 
       return res.sendStatus(200);
